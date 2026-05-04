@@ -8,6 +8,8 @@ export default function RoleUsersManager({ roleId, users }) {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [gender, setGender] = useState("");
   const [loading, setLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [message, setMessage] = useState("");
@@ -23,7 +25,7 @@ export default function RoleUsersManager({ roleId, users }) {
       const response = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password, idRole: Number(roleId) }),
+        body: JSON.stringify({ username, email, password, birthDate, gender, idRole: Number(roleId) }),
       });
 
       const json = await response.json().catch(() => ({}));
@@ -36,6 +38,8 @@ export default function RoleUsersManager({ roleId, users }) {
       setUsername("");
       setEmail("");
       setPassword("");
+      setBirthDate("");
+      setGender("");
       setMessage("Usuario creado correctamente.");
       router.refresh();
     } catch {
@@ -109,6 +113,23 @@ export default function RoleUsersManager({ roleId, users }) {
           />
           <input
             required
+            type="date"
+            value={birthDate}
+            onChange={(event) => setBirthDate(event.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2"
+          />
+          <select
+            required
+            value={gender}
+            onChange={(event) => setGender(event.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 bg-white"
+          >
+            <option value="" disabled>Seleccionar género</option>
+            <option value="masculino">Masculino</option>
+            <option value="femenino">Femenino</option>
+          </select>
+          <input
+            required
             type="password"
             placeholder="Password"
             value={password}
@@ -142,7 +163,9 @@ export default function RoleUsersManager({ roleId, users }) {
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                     Usuario #{user.id}
                   </p>
-                  <h3 className="mt-2 text-lg font-semibold text-slate-900">{user.username}</h3>
+                  <p className="mt-2 text-lg font-semibold text-slate-900">
+                    {user.username}
+                  </p>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}>
                   {status.label}

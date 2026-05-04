@@ -1,4 +1,4 @@
-﻿import { cookies } from "next/headers";
+﻿﻿import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 const USERS_URL = "https://rutina360-server.onrender.com/users";
@@ -13,10 +13,12 @@ export async function POST(request) {
     const email = body?.email?.trim();
     const password = body?.password;
     const idRole = Number(body?.idRole);
+    const birthDate = body?.birthDate;
+    const gender = body?.gender;
 
-    if (!username || !email || !password || !idRole) {
+    if (!username || !email || !password || !idRole || !birthDate || !gender) {
       return NextResponse.json(
-        { message: "username, email, password e idRole son obligatorios." },
+        { message: "username, email, password, idRole, birthDate y gender son obligatorios." },
         { status: 400 }
       );
     }
@@ -27,7 +29,7 @@ export async function POST(request) {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ username, email, password, idRole }),
+      body: JSON.stringify({ username, email, password, idRole, birthDate, gender }),
       cache: "no-store",
     });
 
