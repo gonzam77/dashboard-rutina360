@@ -1,4 +1,5 @@
 ﻿import Link from "next/link";
+import RoleUsersManager from "@/components/roles/RoleUsersManager";
 
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
 const USERS_URL = "https://rutina360-server.onrender.com/users";
@@ -54,9 +55,7 @@ export default async function RolUsuariosDetallePage({ params }) {
             <h1 className="text-2xl font-semibold text-slate-900">
               {role ? `Usuarios del rol: ${role.name}` : "Usuarios por rol"}
             </h1>
-            <p className="mt-3 text-slate-600">
-              {role ? `Rol #${role.id}` : `Rol #${roleId}`}
-            </p>
+            <p className="mt-3 text-slate-600">{role ? `Rol #${role.id}` : `Rol #${roleId}`}</p>
           </div>
           <Link
             href="/inicio/roles-usuarios"
@@ -71,33 +70,9 @@ export default async function RolUsuariosDetallePage({ params }) {
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
           {errorMessage}
         </div>
-      ) : null}
-
-      {!errorMessage && users.length === 0 ? (
-        <div className="rounded-2xl bg-white p-6 text-slate-600 shadow-sm">
-          No hay usuarios asociados a este rol.
-        </div>
-      ) : null}
-
-      {!errorMessage && users.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {users.map((user) => (
-            <article
-              key={user.id}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Usuario #{user.id}
-              </p>
-              <h2 className="mt-2 text-lg font-semibold text-slate-900">{user.username}</h2>
-              <p className="mt-2 text-sm text-slate-600">{user.email || "Sin email"}</p>
-              <p className="mt-3 text-sm text-slate-700">
-                Rol: {user?.Rol?.name || role?.name || "Sin rol"}
-              </p>
-            </article>
-          ))}
-        </div>
-      ) : null}
+      ) : (
+        <RoleUsersManager roleId={roleId} users={users} />
+      )}
     </section>
   );
 }
