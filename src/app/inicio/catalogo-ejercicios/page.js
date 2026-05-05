@@ -1,4 +1,6 @@
-﻿const MUSCLE_GROUPS_URL = "https://rutina360-server.onrender.com/muscleGroup";
+import { revalidatePath } from "next/cache";
+
+const MUSCLE_GROUPS_URL = "https://rutina360-server.onrender.com/muscleGroup";
 const EXERCISES_URL = "https://rutina360-server.onrender.com/ejercice";
 
 async function fetchJson(url, fallbackMessage) {
@@ -10,6 +12,63 @@ async function fetchJson(url, fallbackMessage) {
   }
 
   return Array.isArray(json?.data) ? json.data : [];
+}
+
+async function createMuscleGroup(formData) {
+  "use server";
+
+  const name = String(formData.get("name") || "").trim();
+
+  if (!name) {
+    throw new Error("El nombre del grupo muscular es obligatorio.");
+  }
+
+  const response = await fetch(`${MUSCLE_GROUPS_URL}/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const json = await response.json().catch(() => ({}));
+    throw new Error(json?.message || "No se pudo crear el grupo muscular.");
+  }
+
+  revalidatePath("/inicio/catalogo-ejercicios");
+}
+
+async function createExercise(formData) {
+  "use server";
+
+  const name = String(formData.get("name") || "").trim();
+  const idMuscleGroup = Number(formData.get("idMuscleGroup"));
+
+  if (!name) {
+    throw new Error("El nombre del ejercicio es obligatorio.");
+  }
+
+  if (!Number.isFinite(idMuscleGroup) || idMuscleGroup <= 0) {
+    throw new Error("El grupo muscular es invalido.");
+  }
+
+  const response = await fetch(`${EXERCISES_URL}/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ idMuscleGroup, name }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const json = await response.json().catch(() => ({}));
+    throw new Error(json?.message || "No se pudo crear el ejercicio.");
+  }
+
+  revalidatePath("/inicio/catalogo-ejercicios");
 }
 
 export default async function CatalogoEjerciciosPage() {
@@ -36,6 +95,21 @@ export default async function CatalogoEjerciciosPage() {
         <p className="mt-3 text-slate-600">
           Grupos musculares y ejercicios asociados del sistema.
         </p>
+        <form action={createMuscleGroup} className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <input
+            type="text"
+            name="name"
+            placeholder="Nuevo grupo muscular (ej: Lumbares)"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none ring-slate-300 focus:ring"
+            required
+          />
+          <button
+            type="submit"
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
+          >
+            Agregar grupo muscular
+          </button>
+        </form>
       </header>
 
       {errorMessage ? (
@@ -85,6 +159,23 @@ export default async function CatalogoEjerciciosPage() {
                     ))}
                   </ul>
                 )}
+
+                <form action={createExercise} className="mt-4 flex flex-col gap-3 sm:flex-row">
+                  <input type="hidden" name="idMuscleGroup" value={group.id} />
+                  <input
+                    type="text"
+                    name="name"
+                    placeholder="Nuevo ejercicio para este grupo"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none ring-slate-300 focus:ring"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500"
+                  >
+                    Agregar ejercicio
+                  </button>
+                </form>
               </article>
             );
           })}
