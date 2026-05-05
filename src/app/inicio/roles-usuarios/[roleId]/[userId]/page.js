@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import CoachRoutineForm from "@/components/roles/CoachRoutineForm";
+import CoachRoutinesList from "@/components/roles/CoachRoutinesList";
 
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
 const USERS_URL = "https://rutina360-server.onrender.com/users";
@@ -128,20 +129,7 @@ export default async function UserProfilePage({ params }) {
       {!errorMessage && user && isCoachProfile ? (
         <section className="rounded-2xl bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Rutinas del coach</h2>
-          {coachRoutines.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-600">Este coach aun no tiene rutinas creadas.</p>
-          ) : (
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-              {coachRoutines.map((routine) => (
-                <article key={routine.id} className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Rutina #{routine.id}</p>
-                  <p className="mt-1 font-semibold text-slate-900">{routine.name}</p>
-                  <p className="mt-2 text-sm text-slate-700">Orden: {routine.order || "-"}</p>
-                  <p className="text-sm text-slate-700">Tiempo: {routine.time || "-"} min</p>
-                </article>
-              ))}
-            </div>
-          )}
+          <CoachRoutinesList roleId={roleId} userId={user.id} routines={coachRoutines} />
         </section>
       ) : null}
 
