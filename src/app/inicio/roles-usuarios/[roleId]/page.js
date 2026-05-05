@@ -71,7 +71,7 @@ export default async function RolUsuariosDetallePage({ params }) {
           {errorMessage}
         </div>
       ) : (
-        <RoleUsersManager roleId={roleId} users={users} />
+        <RoleUsersManager roleId={roleId} roleName={role?.name || ""} users={users} />
       )}
     </section>
   );

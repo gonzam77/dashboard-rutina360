@@ -4,17 +4,23 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function RoleUsersManager({ roleId, users }) {
+export default function RoleUsersManager({ roleId, roleName, users }) {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState("");
+  const [height, setHeight] = useState("");
+  const [weight, setWeight] = useState("");
+  const [goal, setGoal] = useState("");
+  const [weeklyAvailability, setWeeklyAvailability] = useState("");
   const [loading, setLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  const isAthleteRole = ["athlete", "atleta"].includes(String(roleName).trim().toLowerCase());
 
   async function handleCreateUser(event) {
     event.preventDefault();
@@ -23,10 +29,30 @@ export default function RoleUsersManager({ roleId, users }) {
     setMessage("");
 
     try {
+      if (isAthleteRole && (!height || !weight || !goal.trim() || !weeklyAvailability)) {
+        setError("Para crear un atleta debes completar altura, peso, objetivo y disponibilidad semanal.");
+        return;
+      }
+
       const response = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password, birthDate, gender, idRole: Number(roleId) }),
+        body: JSON.stringify({
+          username,
+          email,
+          password,
+          birthDate,
+          gender,
+          idRole: Number(roleId),
+          ...(isAthleteRole
+            ? {
+                height: Number(height),
+                weight: Number(weight),
+                goal: goal.trim(),
+                weeklyAvailability,
+              }
+            : {}),
+        }),
       });
 
       const json = await response.json().catch(() => ({}));
@@ -41,6 +67,10 @@ export default function RoleUsersManager({ roleId, users }) {
       setPassword("");
       setBirthDate("");
       setGender("");
+      setHeight("");
+      setWeight("");
+      setGoal("");
+      setWeeklyAvailability("");
       setMessage("Usuario creado correctamente.");
       router.refresh();
     } catch {
@@ -137,6 +167,51 @@ export default function RoleUsersManager({ roleId, users }) {
             onChange={(event) => setPassword(event.target.value)}
             className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2"
           />
+          {isAthleteRole ? (
+            <>
+              <input
+                required
+                type="number"
+                min="1"
+                placeholder="Altura (cm)"
+                value={height}
+                onChange={(event) => setHeight(event.target.value)}
+                className="rounded-lg border border-slate-300 px-3 py-2"
+              />
+              <input
+                required
+                type="number"
+                min="1"
+                placeholder="Peso (kg)"
+                value={weight}
+                onChange={(event) => setWeight(event.target.value)}
+                className="rounded-lg border border-slate-300 px-3 py-2"
+              />
+              <input
+                required
+                type="text"
+                placeholder="Objetivo (texto libre)"
+                value={goal}
+                onChange={(event) => setGoal(event.target.value)}
+                className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2"
+              />
+              <select
+                required
+                value={weeklyAvailability}
+                onChange={(event) => setWeeklyAvailability(event.target.value)}
+                className="rounded-lg border border-slate-300 px-3 py-2 bg-white md:col-span-2"
+              >
+                <option value="" disabled>Seleccionar disponibilidad semanal</option>
+                <option value="1 dia a la semana">1 dia a la semana</option>
+                <option value="2 dias a la semana">2 dias a la semana</option>
+                <option value="3 dias a la semana">3 dias a la semana</option>
+                <option value="4 dias a la semana">4 dias a la semana</option>
+                <option value="5 dias a la semana">5 dias a la semana</option>
+                <option value="6 dias a la semana">6 dias a la semana</option>
+                <option value="7 dias a la semana">7 dias a la semana</option>
+              </select>
+            </>
+          ) : null}
           <button
             type="submit"
             disabled={loading}

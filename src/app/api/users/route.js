@@ -15,6 +15,10 @@ export async function POST(request) {
     const idRole = Number(body?.idRole);
     const birthDate = body?.birthDate;
     const gender = body?.gender;
+    const height = body?.height;
+    const weight = body?.weight;
+    const goal = body?.goal;
+    const weeklyAvailability = body?.weeklyAvailability;
 
     if (!username || !email || !password || !idRole || !birthDate || !gender) {
       return NextResponse.json(
@@ -23,13 +27,28 @@ export async function POST(request) {
       );
     }
 
+    const payload = {
+      username,
+      email,
+      password,
+      idRole,
+      birthDate,
+      gender,
+      ...(height !== undefined && height !== null && height !== "" ? { height: Number(height) } : {}),
+      ...(weight !== undefined && weight !== null && weight !== "" ? { weight: Number(weight) } : {}),
+      ...(goal !== undefined && goal !== null && String(goal).trim() !== "" ? { goal: String(goal).trim() } : {}),
+      ...(weeklyAvailability !== undefined && weeklyAvailability !== null && String(weeklyAvailability).trim() !== ""
+        ? { weeklyAvailability: String(weeklyAvailability).trim() }
+        : {}),
+    };
+
     const response = await fetch(USERS_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ username, email, password, idRole, birthDate, gender }),
+      body: JSON.stringify(payload),
       cache: "no-store",
     });
 

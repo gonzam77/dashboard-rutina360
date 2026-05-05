@@ -1,8 +1,9 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { cookies } from "next/headers";
 import CoachRoutinesList from "@/components/roles/CoachRoutinesList";
 import AthleteRoutineAssignment from "@/components/roles/AthleteRoutineAssignment";
 import AthleteAssignedRoutinesList from "@/components/roles/AthleteAssignedRoutinesList";
+import CoachAthleteAssignment from "@/components/roles/CoachAthleteAssignment";
 
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
 const USERS_URL = "https://rutina360-server.onrender.com/users";
@@ -39,6 +40,10 @@ function formatDate(value) {
   return date.toLocaleDateString("es-AR");
 }
 
+function isAthleteRoleName(value) {
+  return ["athlete", "atleta"].includes(String(value || "").trim().toLowerCase());
+}
+
 async function fetchAthleteAssignedRoutines(athleteId, token) {
   const response = await fetch(`${ATHLETE_ASSIGNED_ROUTINES_URL}${athleteId}`, {
     cache: "no-store",
@@ -68,6 +73,7 @@ export default async function UserProfilePage({ params, searchParams }) {
   let coachRoutines = [];
   let assignedAthletes = [];
   let athleteAssignedRoutines = [];
+  let availableAthletes = [];
 
   try {
     const cookieStore = await cookies();
@@ -90,6 +96,20 @@ export default async function UserProfilePage({ params, searchParams }) {
     if (isCoach && user) {
       coachRoutines = routines.filter((routine) => String(routine?.idUser) === String(user.id));
       assignedAthletes = userLinks.filter((link) => String(link?.idCoach) === String(user.id));
+
+      const assignedAthleteIds = new Set(assignedAthletes.map((link) => String(link?.idAthlete)));
+      availableAthletes = users.filter((candidate) => {
+        if (!candidate || String(candidate?.id) === String(user.id)) {
+          return false;
+        }
+
+        const roleName = candidate?.Rol?.name || "";
+        if (!isAthleteRoleName(roleName)) {
+          return false;
+        }
+
+        return !assignedAthleteIds.has(String(candidate?.id));
+      });
     }
 
     if (!isCoach && user) {
@@ -161,6 +181,7 @@ export default async function UserProfilePage({ params, searchParams }) {
       {!errorMessage && user && isCoachProfile ? (
         <section className="rounded-2xl bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Atletas asignados</h2>
+          <CoachAthleteAssignment coachId={user.id} athletes={availableAthletes} />
           {assignedAthletes.length === 0 ? (
             <p className="mt-3 text-sm text-slate-600">Este coach no tiene atletas asignados.</p>
           ) : (
