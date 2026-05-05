@@ -112,7 +112,7 @@ export default async function UserProfilePage({ params, searchParams }) {
       });
     }
 
-    if (!isCoach && user) {
+    if (!isCoach && user && isAthleteRoleName(userRoleName)) {
       athleteAssignedRoutines = await fetchAthleteAssignedRoutines(user.id, token);
     }
   } catch (error) {
@@ -124,6 +124,7 @@ export default async function UserProfilePage({ params, searchParams }) {
   }
 
   const isCoachProfile = userRoleName.trim().toLowerCase() === "coach";
+  const isAthleteProfile = isAthleteRoleName(userRoleName);
 
   return (
     <section className="space-y-6">
@@ -214,7 +215,7 @@ export default async function UserProfilePage({ params, searchParams }) {
         </section>
       ) : null}
 
-      {!errorMessage && user && !isCoachProfile && normalizedCoachId ? (
+      {!errorMessage && user && isAthleteProfile && normalizedCoachId ? (
         <AthleteRoutineAssignment
           athleteId={user.id}
           coachId={normalizedCoachId}
@@ -224,7 +225,7 @@ export default async function UserProfilePage({ params, searchParams }) {
         />
       ) : null}
 
-      {!errorMessage && user && !isCoachProfile ? (
+      {!errorMessage && user && isAthleteProfile ? (
         <section className="rounded-2xl bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Rutinas asignadas al atleta</h2>
           <AthleteAssignedRoutinesList
