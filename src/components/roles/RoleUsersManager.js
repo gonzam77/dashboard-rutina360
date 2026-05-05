@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 export default function RoleUsersManager({ roleId, roleName, users }) {
   const router = useRouter();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,6 +22,34 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
   const [error, setError] = useState("");
 
   const isAthleteRole = ["athlete", "atleta"].includes(String(roleName).trim().toLowerCase());
+
+  function resetCreateForm() {
+    setUsername("");
+    setEmail("");
+    setPassword("");
+    setBirthDate("");
+    setGender("");
+    setHeight("");
+    setWeight("");
+    setGoal("");
+    setWeeklyAvailability("");
+  }
+
+  function openCreateModal() {
+    setMessage("");
+    setError("");
+    setIsCreateModalOpen(true);
+  }
+
+  function closeCreateModal() {
+    if (loading) {
+      return;
+    }
+
+    setIsCreateModalOpen(false);
+    setError("");
+    resetCreateForm();
+  }
 
   async function handleCreateUser(event) {
     event.preventDefault();
@@ -62,15 +91,8 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
         return;
       }
 
-      setUsername("");
-      setEmail("");
-      setPassword("");
-      setBirthDate("");
-      setGender("");
-      setHeight("");
-      setWeight("");
-      setGoal("");
-      setWeeklyAvailability("");
+      resetCreateForm();
+      setIsCreateModalOpen(false);
       setMessage("Usuario creado correctamente.");
       router.refresh();
     } catch {
@@ -124,104 +146,23 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
   return (
     <div className="space-y-6">
       <section className="rounded-2xl bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Crear usuario en este rol</h2>
-        <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={handleCreateUser}>
-          <input
-            required
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2"
-          />
-          <input
-            required
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2"
-          />
-          <input
-            required
-            type="date"
-            value={birthDate}
-            onChange={(event) => setBirthDate(event.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2"
-          />
-          <select
-            required
-            value={gender}
-            onChange={(event) => setGender(event.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 bg-white"
-          >
-            <option value="" disabled>Seleccionar genero</option>
-            <option value="masculino">Masculino</option>
-            <option value="femenino">Femenino</option>
-          </select>
-          <input
-            required
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2"
-          />
-          {isAthleteRole ? (
-            <>
-              <input
-                required
-                type="number"
-                min="1"
-                placeholder="Altura (cm)"
-                value={height}
-                onChange={(event) => setHeight(event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2"
-              />
-              <input
-                required
-                type="number"
-                min="1"
-                placeholder="Peso (kg)"
-                value={weight}
-                onChange={(event) => setWeight(event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2"
-              />
-              <input
-                required
-                type="text"
-                placeholder="Objetivo (texto libre)"
-                value={goal}
-                onChange={(event) => setGoal(event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2"
-              />
-              <select
-                required
-                value={weeklyAvailability}
-                onChange={(event) => setWeeklyAvailability(event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2 bg-white md:col-span-2"
-              >
-                <option value="" disabled>Seleccionar disponibilidad semanal</option>
-                <option value="1 dia a la semana">1 dia a la semana</option>
-                <option value="2 dias a la semana">2 dias a la semana</option>
-                <option value="3 dias a la semana">3 dias a la semana</option>
-                <option value="4 dias a la semana">4 dias a la semana</option>
-                <option value="5 dias a la semana">5 dias a la semana</option>
-                <option value="6 dias a la semana">6 dias a la semana</option>
-                <option value="7 dias a la semana">7 dias a la semana</option>
-              </select>
-            </>
-          ) : null}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Usuarios registrados</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              {users.length === 1 ? "1 usuario en este rol." : `${users.length} usuarios en este rol.`}
+            </p>
+          </div>
           <button
-            type="submit"
-            disabled={loading}
-            className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-800 disabled:opacity-60 md:col-span-2"
+            type="button"
+            onClick={openCreateModal}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
           >
-            {loading ? "Creando..." : "Crear usuario"}
+            Agregar usuario
           </button>
-        </form>
+        </div>
         {message ? <p className="mt-3 text-sm text-emerald-700">{message}</p> : null}
-        {error ? <p className="mt-3 text-sm text-rose-700">{error}</p> : null}
+        {error && !isCreateModalOpen ? <p className="mt-3 text-sm text-rose-700">{error}</p> : null}
       </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -280,6 +221,148 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
           );
         })}
       </section>
+
+      {isCreateModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/50 p-4"
+          onClick={closeCreateModal}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-user-title"
+            className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h3 id="create-user-title" className="text-lg font-semibold text-slate-900">
+                  Agregar usuario
+                </h3>
+                <p className="mt-1 text-sm text-slate-600">Crear usuario en este rol.</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeCreateModal}
+                disabled={loading}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <form className="grid gap-3 md:grid-cols-2" onSubmit={handleCreateUser}>
+              <input
+                required
+                autoFocus
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                className="rounded-lg border border-slate-300 px-3 py-2"
+              />
+              <input
+                required
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="rounded-lg border border-slate-300 px-3 py-2"
+              />
+              <input
+                required
+                type="date"
+                value={birthDate}
+                onChange={(event) => setBirthDate(event.target.value)}
+                className="rounded-lg border border-slate-300 px-3 py-2"
+              />
+              <select
+                required
+                value={gender}
+                onChange={(event) => setGender(event.target.value)}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2"
+              >
+                <option value="" disabled>Seleccionar genero</option>
+                <option value="masculino">Masculino</option>
+                <option value="femenino">Femenino</option>
+              </select>
+              <input
+                required
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2"
+              />
+              {isAthleteRole ? (
+                <>
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    placeholder="Altura (cm)"
+                    value={height}
+                    onChange={(event) => setHeight(event.target.value)}
+                    className="rounded-lg border border-slate-300 px-3 py-2"
+                  />
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    placeholder="Peso (kg)"
+                    value={weight}
+                    onChange={(event) => setWeight(event.target.value)}
+                    className="rounded-lg border border-slate-300 px-3 py-2"
+                  />
+                  <input
+                    required
+                    type="text"
+                    placeholder="Objetivo (texto libre)"
+                    value={goal}
+                    onChange={(event) => setGoal(event.target.value)}
+                    className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2"
+                  />
+                  <select
+                    required
+                    value={weeklyAvailability}
+                    onChange={(event) => setWeeklyAvailability(event.target.value)}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 md:col-span-2"
+                  >
+                    <option value="" disabled>Seleccionar disponibilidad semanal</option>
+                    <option value="1 dia a la semana">1 dia a la semana</option>
+                    <option value="2 dias a la semana">2 dias a la semana</option>
+                    <option value="3 dias a la semana">3 dias a la semana</option>
+                    <option value="4 dias a la semana">4 dias a la semana</option>
+                    <option value="5 dias a la semana">5 dias a la semana</option>
+                    <option value="6 dias a la semana">6 dias a la semana</option>
+                    <option value="7 dias a la semana">7 dias a la semana</option>
+                  </select>
+                </>
+              ) : null}
+
+              {error ? <p className="text-sm text-rose-700 md:col-span-2">{error}</p> : null}
+
+              <div className="flex flex-wrap justify-end gap-2 md:col-span-2">
+                <button
+                  type="button"
+                  onClick={closeCreateModal}
+                  disabled={loading}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {loading ? "Creando..." : "Crear usuario"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
