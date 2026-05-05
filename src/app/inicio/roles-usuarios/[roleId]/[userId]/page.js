@@ -2,11 +2,13 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import CoachRoutineForm from "@/components/roles/CoachRoutineForm";
 import CoachRoutinesList from "@/components/roles/CoachRoutinesList";
+import AthleteRoutineAssignment from "@/components/roles/AthleteRoutineAssignment";
 
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
 const USERS_URL = "https://rutina360-server.onrender.com/users";
 const ROUTINES_URL = "https://rutina360-server.onrender.com/routine/";
 const USER_LINKS_URL = "https://rutina360-server.onrender.com/users/link";
+const ATHLETE_ASSIGNED_ROUTINES_URL = "https://rutina360-server.onrender.com/routine/assign/athlete/";
 
 async function fetchList(url, fallbackMessage, token) {
   const response = await fetch(url, {
@@ -37,36 +39,61 @@ function formatDate(value) {
   return date.toLocaleDateString("es-AR");
 }
 
-export default async function UserProfilePage({ params }) {
+async function fetchAthleteAssignedRoutines(athleteId, token) {
+  const response = await fetch(`${ATHLETE_ASSIGNED_ROUTINES_URL}${athleteId}`, {
+    cache: "no-store",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  const json = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(json?.message || "No se pudieron cargar las rutinas asignadas al atleta.");
+  }
+
+  return Array.isArray(json?.data) ? json.data : [];
+}
+
+export default async function UserProfilePage({ params, searchParams }) {
   const { roleId, userId } = await params;
+  const { coachId } = await searchParams;
+  const normalizedCoachId = Number(coachId);
 
   let errorMessage = "";
   let role = null;
   let user = null;
   let userRoleName = "";
+  let routines = [];
   let coachRoutines = [];
   let assignedAthletes = [];
+  let athleteAssignedRoutines = [];
 
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
 
-    const [roles, users, routines, userLinks] = await Promise.all([
+    const [roles, users, fetchedRoutines, userLinks] = await Promise.all([
       fetchList(ROLES_URL, "No se pudieron cargar los roles.", token),
       fetchList(USERS_URL, "No se pudieron cargar los usuarios.", token),
       fetchList(ROUTINES_URL, "No se pudieron cargar las rutinas.", token),
       fetchList(USER_LINKS_URL, "No se pudieron cargar los atletas asignados.", token),
     ]);
+    routines = fetchedRoutines;
 
     role = roles.find((item) => String(item?.id) === String(roleId)) || null;
     user = users.find((item) => String(item?.id) === String(userId)) || null;
-    userRoleName = role?.name || user?.Rol?.name || "";
+    userRoleName = user?.Rol?.name || role?.name || "";
 
     const isCoach = userRoleName.trim().toLowerCase() === "coach";
 
     if (isCoach && user) {
       coachRoutines = routines.filter((routine) => String(routine?.idUser) === String(user.id));
       assignedAthletes = userLinks.filter((link) => String(link?.idCoach) === String(user.id));
+    }
+
+    if (!isCoach && user) {
+      athleteAssignedRoutines = await fetchAthleteAssignedRoutines(user.id, token);
     }
   } catch (error) {
     errorMessage = error.message;
@@ -155,8 +182,66 @@ export default async function UserProfilePage({ params }) {
                   <p className="text-sm text-slate-700">
                     Alta del vinculo: {formatDate(link?.createdAt)}
                   </p>
+                  <Link
+                    href={`/inicio/roles-usuarios/${roleId}/${link.idAthlete}?coachId=${user.id}`}
+                    className="mt-3 inline-block rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Ir al perfil del atleta
+                  </Link>
                 </article>
               ))}
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {!errorMessage && user && !isCoachProfile && normalizedCoachId ? (
+        <AthleteRoutineAssignment
+          athleteId={user.id}
+          coachId={normalizedCoachId}
+          coachRoutines={routines.filter(
+            (routine) => String(routine?.idUser) === String(normalizedCoachId)
+          )}
+        />
+      ) : null}
+
+      {!errorMessage && user && !isCoachProfile ? (
+        <section className="rounded-2xl bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">Rutinas asignadas al atleta</h2>
+          {athleteAssignedRoutines.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-600">Este atleta aun no tiene rutinas asignadas.</p>
+          ) : (
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              {athleteAssignedRoutines.map((assignment) => {
+                const routine = assignment?.Routine;
+                const routineExercises = Array.isArray(routine?.Routine_Ejercices)
+                  ? routine.Routine_Ejercices
+                  : [];
+
+                return (
+                  <article key={assignment.id} className="rounded-xl border border-slate-200 p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      Asignacion #{assignment.id}
+                    </p>
+                    <p className="mt-1 font-semibold text-slate-900">
+                      {routine?.name || `Rutina #${assignment?.idRoutine || "-"}`}
+                    </p>
+                    <p className="mt-2 text-sm text-slate-700">ID rutina: {routine?.id || assignment?.idRoutine || "-"}</p>
+                    <p className="text-sm text-slate-700">Orden: {routine?.order || "-"}</p>
+                    <p className="text-sm text-slate-700">Tiempo: {routine?.time || "-"} min</p>
+                    <p className="text-sm text-slate-700">Ejercicios: {routineExercises.length}</p>
+                    <p className="text-sm text-slate-700">Asignada: {formatDate(assignment?.createdAt)}</p>
+                    {routine?.id ? (
+                      <Link
+                        href={`/inicio/roles-usuarios/${roleId}/${user.id}/rutinas/${routine.id}`}
+                        className="mt-3 inline-block rounded-lg border border-indigo-300 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+                      >
+                        Ver rutina
+                      </Link>
+                    ) : null}
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
