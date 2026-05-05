@@ -1,5 +1,6 @@
-﻿"use client";
+"use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -124,7 +125,7 @@ export default function RoleUsersManager({ roleId, users }) {
             onChange={(event) => setGender(event.target.value)}
             className="rounded-lg border border-slate-300 px-3 py-2 bg-white"
           >
-            <option value="" disabled>Seleccionar género</option>
+            <option value="" disabled>Seleccionar genero</option>
             <option value="masculino">Masculino</option>
             <option value="femenino">Femenino</option>
           </select>
@@ -175,6 +176,12 @@ export default function RoleUsersManager({ roleId, users }) {
               <p className="mt-2 text-sm text-slate-600">{user.email || "Sin email"}</p>
 
               <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href={`/inicio/roles-usuarios/${roleId}/${user.id}`}
+                  className="rounded-lg border border-indigo-300 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+                >
+                  Ver perfil
+                </Link>
                 <button
                   type="button"
                   onClick={() => handleDeleteUser(user.id, false)}
