@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import CoachRoutineForm from "@/components/roles/CoachRoutineForm";
 import CoachRoutinesList from "@/components/roles/CoachRoutinesList";
 import AthleteRoutineAssignment from "@/components/roles/AthleteRoutineAssignment";
+import AthleteAssignedRoutinesList from "@/components/roles/AthleteAssignedRoutinesList";
 
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
 const USERS_URL = "https://rutina360-server.onrender.com/users";
@@ -151,12 +151,10 @@ export default async function UserProfilePage({ params, searchParams }) {
         </section>
       ) : null}
 
-      {!errorMessage && user && isCoachProfile ? <CoachRoutineForm coachId={user.id} /> : null}
-
       {!errorMessage && user && isCoachProfile ? (
         <section className="rounded-2xl bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Rutinas del coach</h2>
-          <CoachRoutinesList roleId={roleId} userId={user.id} routines={coachRoutines} />
+          <CoachRoutinesList roleId={roleId} userId={user.id} coachId={user.id} routines={coachRoutines} />
         </section>
       ) : null}
 
@@ -208,42 +206,11 @@ export default async function UserProfilePage({ params, searchParams }) {
       {!errorMessage && user && !isCoachProfile ? (
         <section className="rounded-2xl bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Rutinas asignadas al atleta</h2>
-          {athleteAssignedRoutines.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-600">Este atleta aun no tiene rutinas asignadas.</p>
-          ) : (
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-              {athleteAssignedRoutines.map((assignment) => {
-                const routine = assignment?.Routine;
-                const routineExercises = Array.isArray(routine?.Routine_Ejercices)
-                  ? routine.Routine_Ejercices
-                  : [];
-
-                return (
-                  <article key={assignment.id} className="rounded-xl border border-slate-200 p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      Asignacion #{assignment.id}
-                    </p>
-                    <p className="mt-1 font-semibold text-slate-900">
-                      {routine?.name || `Rutina #${assignment?.idRoutine || "-"}`}
-                    </p>
-                    <p className="mt-2 text-sm text-slate-700">ID rutina: {routine?.id || assignment?.idRoutine || "-"}</p>
-                    <p className="text-sm text-slate-700">Orden: {routine?.order || "-"}</p>
-                    <p className="text-sm text-slate-700">Tiempo: {routine?.time || "-"} min</p>
-                    <p className="text-sm text-slate-700">Ejercicios: {routineExercises.length}</p>
-                    <p className="text-sm text-slate-700">Asignada: {formatDate(assignment?.createdAt)}</p>
-                    {routine?.id ? (
-                      <Link
-                        href={`/inicio/roles-usuarios/${roleId}/${user.id}/rutinas/${routine.id}`}
-                        className="mt-3 inline-block rounded-lg border border-indigo-300 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
-                      >
-                        Ver rutina
-                      </Link>
-                    ) : null}
-                  </article>
-                );
-              })}
-            </div>
-          )}
+          <AthleteAssignedRoutinesList
+            roleId={roleId}
+            athleteId={user.id}
+            assignments={athleteAssignedRoutines}
+          />
         </section>
       ) : null}
     </section>

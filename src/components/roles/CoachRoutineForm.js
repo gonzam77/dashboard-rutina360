@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 const MUSCLE_GROUPS_URL = "https://rutina360-server.onrender.com/muscleGroup";
 const EXERCISES_URL = "https://rutina360-server.onrender.com/ejercice";
 
-export default function CoachRoutineForm({ coachId }) {
+export default function CoachRoutineForm({ coachId, isInModal = false }) {
   const router = useRouter();
   const [routineName, setRoutineName] = useState("");
   const [routineOrder, setRoutineOrder] = useState("");
@@ -161,8 +161,8 @@ export default function CoachRoutineForm({ coachId }) {
   }
 
   return (
-    <section className="rounded-2xl bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-900">Crear rutina para este coach</h2>
+    <section className={isInModal ? "" : "rounded-2xl bg-white p-6 shadow-sm"}>
+      {!isInModal ? <h2 className="text-lg font-semibold text-slate-900">Crear rutina para este coach</h2> : null}
       <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={handleSubmit}>
         <input
           required
