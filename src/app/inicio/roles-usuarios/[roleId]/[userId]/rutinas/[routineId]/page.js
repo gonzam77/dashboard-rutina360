@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import RoutineEditButton from "@/components/roles/RoutineEditButton";
 
 const ROUTINES_URL = "https://rutina360-server.onrender.com/routine/";
 const EXERCISES_URL = "https://rutina360-server.onrender.com/ejercice";
@@ -78,12 +79,20 @@ export default async function RoutineDetailPage({ params }) {
               {routine ? `${routine.name} · Rutina #${routine.id}` : `Rutina #${routineId}`}
             </p>
           </div>
-          <Link
-            href={`/inicio/roles-usuarios/${roleId}/${userId}`}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Volver al perfil
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            {routine ? (
+              <RoutineEditButton
+                routine={routine}
+                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              />
+            ) : null}
+            <Link
+              href={`/inicio/roles-usuarios/${roleId}/${userId}`}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Volver al perfil
+            </Link>
+          </div>
         </div>
       </header>
 

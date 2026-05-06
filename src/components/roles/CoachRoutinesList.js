@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import CoachRoutineForm from "@/components/roles/CoachRoutineForm";
+import RoutineEditButton from "@/components/roles/RoutineEditButton";
 
 export default function CoachRoutinesList({ roleId, userId, coachId, routines }) {
   const router = useRouter();
@@ -62,6 +63,7 @@ export default function CoachRoutinesList({ roleId, userId, coachId, routines })
                 >
                   Ver rutina
                 </Link>
+                <RoutineEditButton routine={routine} />
                 <button
                   type="button"
                   onClick={() => handleDeleteRoutine(routine.id)}
