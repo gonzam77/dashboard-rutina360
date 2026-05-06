@@ -4,6 +4,7 @@ import CoachRoutinesList from "@/components/roles/CoachRoutinesList";
 import AthleteRoutineAssignment from "@/components/roles/AthleteRoutineAssignment";
 import AthleteAssignedRoutinesList from "@/components/roles/AthleteAssignedRoutinesList";
 import CoachAthleteAssignment from "@/components/roles/CoachAthleteAssignment";
+import BackNavButton from "@/components/BackNavButton";
 
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
 const USERS_URL = "https://rutina360-server.onrender.com/users";
@@ -62,8 +63,9 @@ async function fetchAthleteAssignedRoutines(athleteId, token) {
 
 export default async function UserProfilePage({ params, searchParams }) {
   const { roleId, userId } = await params;
-  const { coachId } = await searchParams;
+  const { coachId, from } = await searchParams;
   const normalizedCoachId = Number(coachId);
+  const cameFromRoutineDetail = String(from || "").trim().toLowerCase() === "routine";
 
   let errorMessage = "";
   let role = null;
@@ -125,6 +127,9 @@ export default async function UserProfilePage({ params, searchParams }) {
 
   const isCoachProfile = userRoleName.trim().toLowerCase() === "coach";
   const isAthleteProfile = isAthleteRoleName(userRoleName);
+  const backFallbackHref = normalizedCoachId
+    ? `/inicio/roles-usuarios/${roleId}/${normalizedCoachId}`
+    : `/inicio/roles-usuarios/${roleId}`;
 
   return (
     <section className="space-y-6">
@@ -139,12 +144,13 @@ export default async function UserProfilePage({ params, searchParams }) {
               Rol: {userRoleName || (role ? role.name : `#${roleId}`)}
             </p>
           </div>
-          <Link
-            href={`/inicio/roles-usuarios/${roleId}`}
+          <BackNavButton
+            fallbackHref={backFallbackHref}
+            allowHistoryBack={!cameFromRoutineDetail}
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Volver a usuarios
-          </Link>
+          </BackNavButton>
         </div>
       </header>
 
@@ -231,6 +237,7 @@ export default async function UserProfilePage({ params, searchParams }) {
           <AthleteAssignedRoutinesList
             roleId={roleId}
             athleteId={user.id}
+            coachId={normalizedCoachId || ""}
             assignments={athleteAssignedRoutines}
           />
         </section>

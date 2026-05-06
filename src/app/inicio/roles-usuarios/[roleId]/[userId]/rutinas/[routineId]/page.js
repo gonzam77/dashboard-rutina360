@@ -41,8 +41,15 @@ function getRoutineExercises(routine) {
   return [];
 }
 
-export default async function RoutineDetailPage({ params }) {
+export default async function RoutineDetailPage({ params, searchParams }) {
   const { roleId, userId, routineId } = await params;
+  const { source, coachId } = await searchParams;
+  const isFromAthleteProfile = String(source || "").trim().toLowerCase() === "athlete-profile";
+  const backToProfileHref = isFromAthleteProfile
+    ? coachId
+      ? `/inicio/roles-usuarios/${roleId}/${userId}?from=routine&coachId=${coachId}`
+      : `/inicio/roles-usuarios/${roleId}/${userId}?from=routine`
+    : `/inicio/roles-usuarios/${roleId}/${userId}`;
 
   let errorMessage = "";
   let routine = null;
@@ -87,7 +94,7 @@ export default async function RoutineDetailPage({ params }) {
               />
             ) : null}
             <Link
-              href={`/inicio/roles-usuarios/${roleId}/${userId}`}
+              href={backToProfileHref}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               Volver al perfil

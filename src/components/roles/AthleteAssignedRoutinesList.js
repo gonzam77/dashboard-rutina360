@@ -17,7 +17,7 @@ function formatDate(value) {
   return date.toLocaleDateString("es-AR");
 }
 
-export default function AthleteAssignedRoutinesList({ roleId, athleteId, assignments }) {
+export default function AthleteAssignedRoutinesList({ roleId, athleteId, coachId, assignments }) {
   const router = useRouter();
   const [loadingKey, setLoadingKey] = useState("");
   const [error, setError] = useState("");
@@ -85,7 +85,11 @@ export default function AthleteAssignedRoutinesList({ roleId, athleteId, assignm
               <div className="mt-3 flex flex-wrap gap-2">
                 {routine?.id ? (
                   <Link
-                    href={`/inicio/roles-usuarios/${roleId}/${athleteId}/rutinas/${routine.id}`}
+                    href={
+                      coachId
+                        ? `/inicio/roles-usuarios/${roleId}/${athleteId}/rutinas/${routine.id}?source=athlete-profile&coachId=${coachId}`
+                        : `/inicio/roles-usuarios/${roleId}/${athleteId}/rutinas/${routine.id}?source=athlete-profile`
+                    }
                     className="inline-block rounded-lg border border-indigo-300 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
                   >
                     Ver rutina
