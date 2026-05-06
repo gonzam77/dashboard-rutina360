@@ -69,8 +69,8 @@ export async function POST(request) {
     const token = cookieStore.get("token")?.value;
     const body = await request.json();
 
-    const username = body?.username?.trim();
-    const email = body?.email?.trim();
+    const username = body?.username?.trim().toUpperCase();
+    const email = body?.email?.trim().toLowerCase();
     const password = body?.password;
     const idRole = Number(body?.idRole);
     const birthDate = body?.birthDate;

@@ -21,7 +21,7 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: username.trim().toUpperCase(), password }),
       });
 
       const data = await response.json().catch(() => ({}));

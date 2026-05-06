@@ -16,7 +16,7 @@ function firstNonEmptyString(values) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const username = body?.username?.trim();
+    const username = body?.username?.trim().toUpperCase();
     const password = body?.password;
 
     if (!username || !password) {
