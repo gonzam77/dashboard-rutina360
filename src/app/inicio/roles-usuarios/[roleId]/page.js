@@ -1,11 +1,17 @@
 ﻿import Link from "next/link";
+import { cookies } from "next/headers";
 import RoleUsersManager from "@/components/roles/RoleUsersManager";
 
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
 const USERS_URL = "https://rutina360-server.onrender.com/users";
 
-async function getRoleById(roleId) {
-  const response = await fetch(ROLES_URL, { cache: "no-store" });
+async function getRoleById(roleId, token) {
+  const response = await fetch(ROLES_URL, {
+    cache: "no-store",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
   const json = await response.json().catch(() => ({}));
 
   if (!response.ok) {
@@ -16,15 +22,37 @@ async function getRoleById(roleId) {
   return roles.find((role) => String(role.id) === String(roleId)) || null;
 }
 
-async function getUsers() {
-  const response = await fetch(USERS_URL, { cache: "no-store" });
-  const json = await response.json().catch(() => ({}));
+async function fetchUsersFrom(url, token) {
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
 
   if (!response.ok) {
-    throw new Error(json?.message || "No se pudieron cargar los usuarios.");
+    return null;
   }
 
+  const json = await response.json().catch(() => ({}));
   return Array.isArray(json?.data) ? json.data : [];
+}
+
+async function getUsers(roleId, token) {
+  const candidates = [
+    `${USERS_URL}/role/${roleId}`,
+    `${USERS_URL}?idRole=${roleId}`,
+    USERS_URL,
+  ];
+
+  for (const url of candidates) {
+    const users = await fetchUsersFrom(url, token);
+    if (users) {
+      return users;
+    }
+  }
+
+  return [];
 }
 
 export default async function RolUsuariosDetallePage({ params }) {
@@ -35,7 +63,10 @@ export default async function RolUsuariosDetallePage({ params }) {
   let errorMessage = "";
 
   try {
-    const [roleResult, usersResult] = await Promise.all([getRoleById(roleId), getUsers()]);
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+
+    const [roleResult, usersResult] = await Promise.all([getRoleById(roleId, token), getUsers(roleId, token)]);
     role = roleResult;
 
     users = usersResult.filter((user) => {
@@ -76,3 +107,4 @@ export default async function RolUsuariosDetallePage({ params }) {
     </section>
   );
 }
+

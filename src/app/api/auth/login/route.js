@@ -34,7 +34,10 @@ export async function POST(request) {
       );
     }
 
-    const token = authData?.data?.token || authData?.token;
+    const rawToken = authData?.data?.data?.token || authData?.data?.token || authData?.token;
+    const token = typeof rawToken === "string"
+      ? rawToken.replace(/^Bearer\s+/i, "").trim()
+      : "";
 
     if (!token) {
       return NextResponse.json(

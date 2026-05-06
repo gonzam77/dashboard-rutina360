@@ -1,9 +1,15 @@
 ﻿import Link from "next/link";
+import { cookies } from "next/headers";
 
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
 
-async function getRoles() {
-  const response = await fetch(ROLES_URL, { cache: "no-store" });
+async function getRoles(token) {
+  const response = await fetch(ROLES_URL, {
+    cache: "no-store",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
   const json = await response.json().catch(() => ({}));
 
   if (!response.ok) {
@@ -18,7 +24,9 @@ export default async function RolesUsuariosPage() {
   let errorMessage = "";
 
   try {
-    roles = await getRoles();
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+    roles = await getRoles(token);
   } catch (error) {
     errorMessage = error.message;
   }
@@ -65,3 +73,4 @@ export default async function RolesUsuariosPage() {
     </section>
   );
 }
+

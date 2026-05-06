@@ -28,6 +28,22 @@ async function fetchList(url, fallbackMessage, token) {
   return Array.isArray(json?.data) ? json.data : [];
 }
 
+async function fetchListSafe(url, token) {
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const json = await response.json().catch(() => ({}));
+  return Array.isArray(json?.data) ? json.data : [];
+}
+
 function formatDate(value) {
   if (!value) {
     return "Sin dato";
@@ -81,11 +97,16 @@ export default async function UserProfilePage({ params, searchParams }) {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
 
-    const [roles, users, fetchedRoutines, userLinks] = await Promise.all([
+    // Roles y usuarios son el minimo necesario para renderizar el perfil.
+    const [roles, users] = await Promise.all([
       fetchList(ROLES_URL, "No se pudieron cargar los roles.", token),
       fetchList(USERS_URL, "No se pudieron cargar los usuarios.", token),
-      fetchList(ROUTINES_URL, "No se pudieron cargar las rutinas.", token),
-      fetchList(USER_LINKS_URL, "No se pudieron cargar los atletas asignados.", token),
+    ]);
+
+    // Estos recursos pueden fallar por permisos de rol; la vista sigue operativa con estados vacios.
+    const [fetchedRoutines, userLinks] = await Promise.all([
+      fetchListSafe(ROUTINES_URL, token),
+      fetchListSafe(USER_LINKS_URL, token),
     ]);
     routines = fetchedRoutines;
 
@@ -115,7 +136,11 @@ export default async function UserProfilePage({ params, searchParams }) {
     }
 
     if (!isCoach && user && isAthleteRoleName(userRoleName)) {
-      athleteAssignedRoutines = await fetchAthleteAssignedRoutines(user.id, token);
+      try {
+        athleteAssignedRoutines = await fetchAthleteAssignedRoutines(user.id, token);
+      } catch {
+        athleteAssignedRoutines = [];
+      }
     }
   } catch (error) {
     errorMessage = error.message;
