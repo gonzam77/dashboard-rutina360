@@ -192,7 +192,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false }) {
         />
         <div className="md:col-span-2">
           <p className="mb-2 text-sm font-medium text-slate-800">Agregar ejercicios (uno por uno)</p>
-          <div className="rounded-lg border border-slate-200 p-3">
+          <div className="flex flex-col rounded-lg border border-slate-200 p-3">
             <div className="grid gap-3 md:grid-cols-2">
               <select
                 value={draftExercise.muscleGroupId}
@@ -241,21 +241,23 @@ export default function CoachRoutineForm({ coachId, isInModal = false }) {
                 className="rounded-lg border border-slate-300 px-3 py-2"
               />
 
+            </div>
+            <div className="mt-auto space-y-3 pt-3">
               <input
                 type="text"
                 placeholder="Comentario (opcional)"
                 value={draftExercise.comments}
                 onChange={(event) => updateDraftExercise("comments", event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2"
               />
+              <button
+                type="button"
+                onClick={addConfirmedExercise}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Confirmar ejercicio y agregar
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={addConfirmedExercise}
-              className="mt-3 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Confirmar ejercicio y agregar
-            </button>
           </div>
 
           <div className="mt-3 space-y-2">

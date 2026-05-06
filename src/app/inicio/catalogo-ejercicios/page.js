@@ -215,7 +215,7 @@ export default async function CatalogoEjerciciosPage() {
             return (
               <article
                 key={group.id}
-                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
               >
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="text-lg font-semibold text-slate-900">{group.name}</h2>
@@ -258,7 +258,7 @@ export default async function CatalogoEjerciciosPage() {
                   </ul>
                 )}
 
-                <form action={createExercise} className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <form action={createExercise} className="mt-auto pt-4 flex flex-col gap-3 sm:flex-row">
                   <input type="hidden" name="idMuscleGroup" value={group.id} />
                   <input
                     type="text"
