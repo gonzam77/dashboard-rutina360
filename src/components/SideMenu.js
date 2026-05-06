@@ -2,6 +2,7 @@
 
 const MENU_ITEMS = [
   { href: "/inicio/roles-usuarios", label: "Roles y usuarios" },
+  { href: "/inicio/rutinas-creadas", label: "Rutinas creadas" },
   { href: "/inicio/catalogo-ejercicios", label: "Catalogo ejercicios" },
 ];
 
