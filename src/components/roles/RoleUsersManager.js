@@ -22,6 +22,7 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
   const [error, setError] = useState("");
 
   const isAthleteRole = ["athlete", "atleta"].includes(String(roleName).trim().toLowerCase());
+  const isAdminRole = ["admin", "administrador"].includes(String(roleName).trim().toLowerCase());
 
   function resetCreateForm() {
     setUsername("");
@@ -70,8 +71,7 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
           username,
           email,
           password,
-          birthDate,
-          gender,
+          ...(!isAdminRole ? { birthDate, gender } : {}),
           idRole: Number(roleId),
           ...(isAthleteRole
             ? {
@@ -269,23 +269,27 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
                 onChange={(event) => setEmail(event.target.value)}
                 className="rounded-lg border border-slate-300 px-3 py-2"
               />
-              <input
-                required
-                type="date"
-                value={birthDate}
-                onChange={(event) => setBirthDate(event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2"
-              />
-              <select
-                required
-                value={gender}
-                onChange={(event) => setGender(event.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2"
-              >
-                <option value="" disabled>Seleccionar genero</option>
-                <option value="masculino">Masculino</option>
-                <option value="femenino">Femenino</option>
-              </select>
+              {!isAdminRole ? (
+                <>
+                  <input
+                    required
+                    type="date"
+                    value={birthDate}
+                    onChange={(event) => setBirthDate(event.target.value)}
+                    className="rounded-lg border border-slate-300 px-3 py-2"
+                  />
+                  <select
+                    required
+                    value={gender}
+                    onChange={(event) => setGender(event.target.value)}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2"
+                  >
+                    <option value="" disabled>Seleccionar genero</option>
+                    <option value="masculino">Masculino</option>
+                    <option value="femenino">Femenino</option>
+                  </select>
+                </>
+              ) : null}
               <input
                 required
                 type="password"

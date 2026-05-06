@@ -1,7 +1,17 @@
-﻿import { cookies } from "next/headers";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 const AUTH_URL = "https://rutina360-server.onrender.com/users/auth";
+
+function firstNonEmptyString(values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return "";
+}
 
 export async function POST(request) {
   try {
@@ -46,14 +56,32 @@ export async function POST(request) {
       );
     }
 
+    const loggedUser = authData?.data?.user || authData?.user || null;
+    const safeSessionUser = loggedUser
+      ? {
+          id: Number(loggedUser?.id) || null,
+          username: firstNonEmptyString([loggedUser?.username]),
+          roleName: firstNonEmptyString([loggedUser?.Rol?.name]),
+          idRole: Number(loggedUser?.idRole) || null,
+        }
+      : null;
+
     const cookieStore = await cookies();
-    cookieStore.set("token", token, {
+    const baseCookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24,
-    });
+    };
+
+    cookieStore.set("token", token, baseCookieOptions);
+
+    if (safeSessionUser) {
+      cookieStore.set("session_user", encodeURIComponent(JSON.stringify(safeSessionUser)), baseCookieOptions);
+    } else {
+      cookieStore.delete("session_user");
+    }
 
     return NextResponse.json({ ok: true });
   } catch {

@@ -42,6 +42,11 @@ function requiresAdminOwner(roleName) {
   return name === "coach" || name === "atleta" || name === "athlete";
 }
 
+function isAdminRole(roleName) {
+  const name = normalizeRoleName(roleName);
+  return name === "admin" || name === "administrador";
+}
+
 async function fetchList(url, token) {
   const response = await fetch(url, {
     cache: "no-store",
@@ -76,9 +81,9 @@ export async function POST(request) {
     const weeklyAvailability = body?.weeklyAvailability;
     const explicitAdminOwnerId = Number(body?.idAdminOwner);
 
-    if (!username || !email || !password || !idRole || !birthDate || !gender) {
+    if (!username || !email || !password || !idRole) {
       return NextResponse.json(
-        { message: "username, email, password, idRole, birthDate y gender son obligatorios." },
+        { message: "username, email, password e idRole son obligatorios." },
         { status: 400 }
       );
     }
@@ -92,7 +97,15 @@ export async function POST(request) {
 
     const targetRole = roles.find((role) => Number(role?.id) === idRole);
     const targetRoleName = targetRole?.name || "";
+    const shouldRequireBirthAndGender = !isAdminRole(targetRoleName);
     const shouldAssignOwner = requiresAdminOwner(targetRoleName);
+
+    if (shouldRequireBirthAndGender && (!birthDate || !gender)) {
+      return NextResponse.json(
+        { message: "birthDate y gender son obligatorios para este rol." },
+        { status: 400 }
+      );
+    }
 
     if (shouldAssignOwner) {
       if (Number.isFinite(explicitAdminOwnerId) && explicitAdminOwnerId > 0) {
@@ -127,8 +140,7 @@ export async function POST(request) {
       email,
       password,
       idRole,
-      birthDate,
-      gender,
+      ...(shouldRequireBirthAndGender ? { birthDate, gender } : {}),
       ...(shouldAssignOwner ? { idAdminOwner: Number(idAdminOwner) } : {}),
       ...(height !== undefined && height !== null && height !== "" ? { height: Number(height) } : {}),
       ...(weight !== undefined && weight !== null && weight !== "" ? { weight: Number(weight) } : {}),

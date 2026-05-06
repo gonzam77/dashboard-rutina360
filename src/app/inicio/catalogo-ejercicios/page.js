@@ -55,11 +55,16 @@ async function createExercise(formData) {
   "use server";
 
   const name = String(formData.get("name") || "").trim();
+  const idMuscleGroup = Number(formData.get("idMuscleGroup"));
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
 
   if (!name) {
     throw new Error("El nombre del ejercicio es obligatorio.");
+  }
+
+  if (!Number.isFinite(idMuscleGroup) || idMuscleGroup <= 0) {
+    throw new Error("El grupo muscular es invalido.");
   }
 
   const response = await fetch(`${EXERCISES_URL}/`, {
@@ -68,7 +73,7 @@ async function createExercise(formData) {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ idMuscleGroup, name }),
     cache: "no-store",
   });
 
@@ -260,6 +265,7 @@ export default async function CatalogoEjerciciosPage() {
                 )}
 
                 <form action={createExercise} className="mt-auto pt-4 flex flex-col gap-3 sm:flex-row">
+                  <input type="hidden" name="idMuscleGroup" value={group.id} />
                   <input
                     type="text"
                     name="name"

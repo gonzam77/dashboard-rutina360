@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 
 const MENU_ITEMS = [
   { href: "/inicio/roles-usuarios", label: "Roles y usuarios" },
@@ -6,12 +6,16 @@ const MENU_ITEMS = [
   { href: "/inicio/catalogo-ejercicios", label: "Catalogo ejercicios" },
 ];
 
-export default function SideMenu() {
+export default function SideMenu({ username = "Usuario", role = "Sin rol" }) {
   return (
     <aside className="w-full lg:w-72 bg-slate-900 text-slate-100 lg:min-h-screen flex flex-col">
       <div className="p-6 border-b border-slate-800">
         <h2 className="text-xl font-semibold">Rutina360</h2>
         <p className="mt-1 text-sm text-slate-400">Panel administrativo</p>
+        <div className="mt-4 rounded-lg bg-slate-800/70 px-3 py-2 text-sm">
+          <p className="font-medium text-slate-100">{username}</p>
+          <p className="text-slate-300">{role}</p>
+        </div>
       </div>
 
       <nav className="p-4 space-y-2 flex-1">
