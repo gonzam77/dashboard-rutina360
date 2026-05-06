@@ -1,10 +1,18 @@
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import ExerciseDeleteButton from "@/components/catalog/ExerciseDeleteButton";
 
 const MUSCLE_GROUPS_URL = "https://rutina360-server.onrender.com/muscleGroup";
 const EXERCISES_URL = "https://rutina360-server.onrender.com/ejercice";
+const ROUTINES_URL = "https://rutina360-server.onrender.com/routine/";
 
-async function fetchJson(url, fallbackMessage) {
-  const response = await fetch(url, { cache: "no-store" });
+async function fetchJson(url, fallbackMessage, token) {
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
   const json = await response.json().catch(() => ({}));
 
   if (!response.ok) {
@@ -71,19 +79,86 @@ async function createExercise(formData) {
   revalidatePath("/inicio/catalogo-ejercicios");
 }
 
+function getRoutineExercises(routine) {
+  if (Array.isArray(routine?.exercises)) {
+    return routine.exercises;
+  }
+
+  if (Array.isArray(routine?.Routine_Ejercices)) {
+    return routine.Routine_Ejercices;
+  }
+
+  if (Array.isArray(routine?.Ejercices)) {
+    return routine.Ejercices;
+  }
+
+  if (Array.isArray(routine?.RoutineEjercices)) {
+    return routine.RoutineEjercices;
+  }
+
+  return [];
+}
+
+function getRoutineExerciseId(item) {
+  return (
+    item?.idEjercice ||
+    item?.Ejercice?.id ||
+    item?.exercise?.id ||
+    item?.Exercise?.id ||
+    item?.idExercise ||
+    item?.idEjercicio ||
+    item?.id
+  );
+}
+
+function getRoutineUsageByExerciseId(routines) {
+  const usage = new Map();
+
+  for (const routine of routines) {
+    const exerciseIds = new Set();
+
+    for (const item of getRoutineExercises(routine)) {
+      const exerciseId = getRoutineExerciseId(item);
+
+      if (exerciseId) {
+        exerciseIds.add(String(exerciseId));
+      }
+    }
+
+    for (const exerciseId of exerciseIds) {
+      usage.set(exerciseId, (usage.get(exerciseId) || 0) + 1);
+    }
+  }
+
+  return usage;
+}
+
 export default async function CatalogoEjerciciosPage() {
   let muscleGroups = [];
   let exercises = [];
+  let routineUsageByExerciseId = new Map();
   let errorMessage = "";
+  let routineUsageWarning = "";
+  let routineUsageVerified = false;
 
   try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
     const [muscleGroupsResult, exercisesResult] = await Promise.all([
-      fetchJson(MUSCLE_GROUPS_URL, "No se pudieron cargar los grupos musculares."),
-      fetchJson(EXERCISES_URL, "No se pudieron cargar los ejercicios."),
+      fetchJson(MUSCLE_GROUPS_URL, "No se pudieron cargar los grupos musculares.", token),
+      fetchJson(EXERCISES_URL, "No se pudieron cargar los ejercicios.", token),
     ]);
 
     muscleGroups = muscleGroupsResult;
     exercises = exercisesResult;
+
+    try {
+      const routines = await fetchJson(ROUTINES_URL, "No se pudieron cargar las rutinas.", token);
+      routineUsageByExerciseId = getRoutineUsageByExerciseId(routines);
+      routineUsageVerified = true;
+    } catch (error) {
+      routineUsageWarning = error.message;
+    }
   } catch (error) {
     errorMessage = error.message;
   }
@@ -118,6 +193,12 @@ export default async function CatalogoEjerciciosPage() {
         </div>
       ) : null}
 
+      {!errorMessage && routineUsageWarning ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          {routineUsageWarning} Las eliminaciones seguiran pidiendo confirmacion, pero no se pudo anticipar si el ejercicio esta vinculado a una rutina.
+        </div>
+      ) : null}
+
       {!errorMessage && muscleGroups.length === 0 ? (
         <div className="rounded-2xl bg-white p-6 text-slate-600 shadow-sm">
           No hay grupos musculares disponibles.
@@ -149,14 +230,31 @@ export default async function CatalogoEjerciciosPage() {
                   </p>
                 ) : (
                   <ul className="mt-4 space-y-2">
-                    {groupExercises.map((exercise) => (
-                      <li
-                        key={exercise.id}
-                        className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm text-slate-800"
-                      >
-                        {exercise.name}
-                      </li>
-                    ))}
+                    {groupExercises.map((exercise) => {
+                      const routineCount = routineUsageByExerciseId.get(String(exercise.id)) || 0;
+
+                      return (
+                        <li
+                          key={exercise.id}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm text-slate-800"
+                        >
+                          <div className="min-w-0">
+                            <p className="break-words font-medium">{exercise.name}</p>
+                            {routineUsageVerified && routineCount > 0 ? (
+                              <p className="mt-1 text-xs text-amber-700">
+                                Vinculado a {routineCount} rutina{routineCount === 1 ? "" : "s"}
+                              </p>
+                            ) : null}
+                          </div>
+                          <ExerciseDeleteButton
+                            exerciseId={exercise.id}
+                            exerciseName={exercise.name}
+                            routineCount={routineCount}
+                            routineUsageVerified={routineUsageVerified}
+                          />
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
 
