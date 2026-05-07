@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
+import CoachCreateRoutineButton from "@/components/roles/CoachCreateRoutineButton";
 
 const ROUTINES_URL = "https://rutina360-server.onrender.com/routine/";
 const USERS_URL = "https://rutina360-server.onrender.com/users";
@@ -79,6 +81,41 @@ function getAthleteLabel(assignment) {
   return "Usuario sin dato";
 }
 
+function filterDataByViewerRole(routines, users, assignments, roleKey, viewerId) {
+  if (roleKey === "super_admin") {
+    return { routines, users, assignments };
+  }
+
+  if (roleKey === "coach") {
+    const coachRoutines = routines.filter((routine) => Number(routine?.idUser) === Number(viewerId));
+    const visibleRoutineIds = new Set(coachRoutines.map((routine) => String(routine?.id)));
+    const visibleAssignments = assignments.filter((assignment) => {
+      const routineId = assignment?.idRoutine || assignment?.Routine?.id;
+      return visibleRoutineIds.has(String(routineId));
+    });
+    const visibleUsers = users.filter((user) => Number(user?.id) === Number(viewerId));
+
+    return { routines: coachRoutines, users: visibleUsers, assignments: visibleAssignments };
+  }
+
+  if (roleKey === "admin") {
+    const gymUsers = users.filter(
+      (user) => Number(user?.id) === Number(viewerId) || Number(user?.idAdminOwner) === Number(viewerId)
+    );
+    const gymUserIds = new Set(gymUsers.map((user) => String(user?.id)));
+    const gymRoutines = routines.filter((routine) => gymUserIds.has(String(routine?.idUser)));
+    const gymRoutineIds = new Set(gymRoutines.map((routine) => String(routine?.id)));
+    const gymAssignments = assignments.filter((assignment) => {
+      const routineId = assignment?.idRoutine || assignment?.Routine?.id;
+      return gymRoutineIds.has(String(routineId));
+    });
+
+    return { routines: gymRoutines, users: gymUsers, assignments: gymAssignments };
+  }
+
+  return { routines, users, assignments };
+}
+
 function buildRoutineRows(routines, assignments, users) {
   const routinesById = new Map();
   const usersById = new Map(users.map((user) => [String(user.id), user]));
@@ -104,9 +141,7 @@ function buildRoutineRows(routines, assignments, users) {
     }
 
     const key = String(routineId);
-    const athleteKey = assignment?.idAthlete
-      ? String(assignment.idAthlete)
-      : `assignment-${assignment.id}`;
+    const athleteKey = assignment?.idAthlete ? String(assignment.idAthlete) : `assignment-${assignment.id}`;
 
     if (!assignmentAthletesByRoutineId.has(key)) {
       assignmentAthletesByRoutineId.set(key, new Set());
@@ -122,9 +157,7 @@ function buildRoutineRows(routines, assignments, users) {
       const routineId = String(routine.id);
       const coach = usersById.get(String(routine?.idUser));
       const athleteIds = assignmentAthletesByRoutineId.get(routineId) || new Set();
-      const athleteNames = Array.from(
-        (assignmentNamesByRoutineId.get(routineId) || new Map()).values()
-      );
+      const athleteNames = Array.from((assignmentNamesByRoutineId.get(routineId) || new Map()).values());
 
       return {
         routine,
@@ -149,17 +182,24 @@ function buildRoutineRows(routines, assignments, users) {
 export default async function RutinasCreadasPage() {
   let rows = [];
   let errorMessage = "";
+  let roleKey = "unknown";
+  let viewerId = null;
 
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
+    const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
+    roleKey = normalizeRoleKey(sessionUser?.roleName);
+    viewerId = Number(sessionUser?.id) || null;
+
     const [routines, users, assignments] = await Promise.all([
       fetchList(ROUTINES_URL, "No se pudieron cargar las rutinas.", token),
       fetchList(USERS_URL, "No se pudieron cargar los usuarios.", token),
       fetchList(ASSIGNMENTS_URL, "No se pudieron cargar las asignaciones de rutinas.", token),
     ]);
 
-    rows = buildRoutineRows(routines, assignments, users);
+    const filtered = filterDataByViewerRole(routines, users, assignments, roleKey, viewerId);
+    rows = buildRoutineRows(filtered.routines, filtered.assignments, filtered.users);
   } catch (error) {
     errorMessage = error.message;
   }
@@ -170,16 +210,17 @@ export default async function RutinasCreadasPage() {
   return (
     <section className="space-y-6">
       <header className="rounded-2xl bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Rutinas creadas</h1>
-        <p className="mt-3 text-slate-600">
-          Listado de rutinas, coach propietario y cantidad de usuarios asignados.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">Rutinas creadas</h1>
+            <p className="mt-3 text-slate-600">Listado de rutinas visibles segun tu perfil, coach propietario y asignaciones.</p>
+          </div>
+          {roleKey === "coach" && viewerId ? <CoachCreateRoutineButton coachId={viewerId} /> : null}
+        </div>
       </header>
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
-          {errorMessage}
-        </div>
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">{errorMessage}</div>
       ) : null}
 
       {!errorMessage ? (
@@ -200,9 +241,7 @@ export default async function RutinasCreadasPage() {
       ) : null}
 
       {!errorMessage && rows.length === 0 ? (
-        <div className="rounded-2xl bg-white p-6 text-slate-600 shadow-sm">
-          No hay rutinas creadas.
-        </div>
+        <div className="rounded-2xl bg-white p-6 text-slate-600 shadow-sm">No hay rutinas visibles para tu perfil.</div>
       ) : null}
 
       {!errorMessage && rows.length > 0 ? (
@@ -226,19 +265,13 @@ export default async function RutinasCreadasPage() {
                   return (
                     <tr key={routine.id} className="align-top">
                       <td className="px-3 py-4">
-                        <p className="font-semibold text-slate-900">
-                          {routine?.name || `Rutina #${routine.id}`}
-                        </p>
+                        <p className="font-semibold text-slate-900">{routine?.name || `Rutina #${routine.id}`}</p>
                         <p className="mt-1 text-xs text-slate-500">ID {routine.id}</p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Orden {routine?.order || "-"} - {routine?.time || "-"} min
-                        </p>
+                        <p className="mt-1 text-xs text-slate-500">Orden {routine?.order || "-"} - {routine?.time || "-"} min</p>
                       </td>
                       <td className="px-3 py-4">
                         <p className="font-medium text-slate-900">{row.coachLabel}</p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {row.coach?.email || `ID ${routine?.idUser || "-"}`}
-                        </p>
+                        <p className="mt-1 text-xs text-slate-500">{row.coach?.email || `ID ${routine?.idUser || "-"}`}</p>
                       </td>
                       <td className="px-3 py-4">
                         <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
@@ -247,9 +280,7 @@ export default async function RutinasCreadasPage() {
                         {row.athleteNames.length > 0 ? (
                           <p className="mt-2 max-w-xs text-xs text-slate-500">
                             {row.athleteNames.slice(0, 3).join(", ")}
-                            {row.athleteNames.length > 3
-                              ? ` y ${row.athleteNames.length - 3} mas`
-                              : ""}
+                            {row.athleteNames.length > 3 ? ` y ${row.athleteNames.length - 3} mas` : ""}
                           </p>
                         ) : null}
                       </td>

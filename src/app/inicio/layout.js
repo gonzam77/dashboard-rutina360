@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import SideMenu from "@/components/SideMenu";
+import { firstNonEmptyString, normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 
 const USERS_URL = "https://rutina360-server.onrender.com/users";
 
@@ -20,16 +21,6 @@ function parseJwtPayload(token) {
   }
 }
 
-function firstNonEmptyString(values) {
-  for (const value of values) {
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
-  }
-
-  return "";
-}
-
 function getUserIdFromJwtPayload(payload) {
   const candidates = [payload?.idUser, payload?.userId, payload?.id, payload?.sub];
 
@@ -41,19 +32,6 @@ function getUserIdFromJwtPayload(payload) {
   }
 
   return null;
-}
-
-function parseSessionUserCookie(rawValue) {
-  if (!rawValue) {
-    return null;
-  }
-
-  try {
-    const decoded = decodeURIComponent(rawValue);
-    return JSON.parse(decoded);
-  } catch {
-    return null;
-  }
 }
 
 function resolveRoleLabel(payload) {
@@ -122,10 +100,15 @@ export default async function InicioLayout({ children }) {
 
   const role =
     firstNonEmptyString([sessionUser?.roleName, currentUser?.Rol?.name, resolveRoleLabel(payload)]) || "Sin rol";
+  const roleKey = normalizeRoleKey(role);
+
+  if (roleKey === "athlete") {
+    redirect("/sin-acceso");
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 lg:flex">
-      <SideMenu username={username} role={role} />
+      <SideMenu username={username} role={role} roleKey={roleKey} />
       <main className="flex-1 p-6 lg:p-8">{children}</main>
     </div>
   );

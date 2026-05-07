@@ -1,12 +1,34 @@
 import Link from "next/link";
 
-const MENU_ITEMS = [
-  { href: "/inicio/roles-usuarios", label: "Roles y usuarios" },
-  { href: "/inicio/rutinas-creadas", label: "Rutinas creadas" },
-  { href: "/inicio/catalogo-ejercicios", label: "Catalogo ejercicios" },
-];
+const MENU_BY_ROLE = {
+  super_admin: [
+    { href: "/inicio", label: "Panel general" },
+    { href: "/inicio/roles-usuarios", label: "Administradores y roles" },
+    { href: "/inicio/rutinas-creadas", label: "Rutinas globales" },
+    { href: "/inicio/catalogo-ejercicios", label: "Catalogo ejercicios" },
+  ],
+  admin: [
+    { href: "/inicio", label: "Panel del gimnasio" },
+    { href: "/inicio/roles-usuarios", label: "Coaches y atletas" },
+    { href: "/inicio/rutinas-creadas", label: "Rutinas" },
+    { href: "/inicio/catalogo-ejercicios", label: "Catalogo ejercicios" },
+  ],
+  coach: [
+    { href: "/inicio", label: "Mi panel" },
+    { href: "/inicio/roles-usuarios/4", label: "Mis atletas" },
+    { href: "/inicio/rutinas-creadas", label: "Mis rutinas" },
+  ],
+  unknown: [
+    { href: "/inicio", label: "Panel" },
+    { href: "/inicio/roles-usuarios", label: "Roles y usuarios" },
+    { href: "/inicio/rutinas-creadas", label: "Rutinas creadas" },
+    { href: "/inicio/catalogo-ejercicios", label: "Catalogo ejercicios" },
+  ],
+};
 
-export default function SideMenu({ username = "Usuario", role = "Sin rol" }) {
+export default function SideMenu({ username = "Usuario", role = "Sin rol", roleKey = "unknown" }) {
+  const menuItems = MENU_BY_ROLE[roleKey] || MENU_BY_ROLE.unknown;
+
   return (
     <aside className="w-full lg:w-72 bg-slate-900 text-slate-100 lg:min-h-screen flex flex-col">
       <div className="p-6 border-b border-slate-800">
@@ -19,7 +41,7 @@ export default function SideMenu({ username = "Usuario", role = "Sin rol" }) {
       </div>
 
       <nav className="p-4 space-y-2 flex-1">
-        {MENU_ITEMS.map((item) => (
+        {menuItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
