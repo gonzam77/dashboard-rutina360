@@ -155,6 +155,7 @@ export default async function UserProfilePage({ params, searchParams }) {
 
   const isCoachProfile = userRoleName.trim().toLowerCase() === "coach";
   const isAthleteProfile = isAthleteRoleName(userRoleName);
+  const shouldShowGender = isCoachProfile || isAthleteProfile;
   const backFallbackHref = normalizedCoachId
     ? `/inicio/roles-usuarios/${roleId}/${normalizedCoachId}`
     : `/inicio/roles-usuarios/${roleId}`;
@@ -195,13 +196,17 @@ export default async function UserProfilePage({ params, searchParams }) {
             <p><span className="font-medium">Username:</span> {user.username || "Sin dato"}</p>
             <p><span className="font-medium">Email:</span> {user.email || "Sin dato"}</p>
             <p><span className="font-medium">Nacimiento:</span> {formatDate(user.birthDate)}</p>
-            <p><span className="font-medium">Genero:</span> {user.gender || "Sin dato"}</p>
+            {shouldShowGender ? <p><span className="font-medium">Genero:</span> {user.gender || "Sin dato"}</p> : null}
             <p><span className="font-medium">Telefono:</span> {user.phone || "Sin dato"}</p>
             <p><span className="font-medium">Direccion:</span> {user.address || "Sin dato"}</p>
-            <p><span className="font-medium">Altura:</span> {user.height || "Sin dato"}</p>
-            <p><span className="font-medium">Peso:</span> {user.weight || "Sin dato"}</p>
-            <p><span className="font-medium">Objetivo:</span> {user.goal || "Sin dato"}</p>
-            <p><span className="font-medium">Disponibilidad:</span> {user.weeklyAvailability || "Sin dato"}</p>
+            {isAthleteProfile ? (
+              <>
+                <p><span className="font-medium">Altura:</span> {user.height || "Sin dato"}</p>
+                <p><span className="font-medium">Peso:</span> {user.weight || "Sin dato"}</p>
+                <p><span className="font-medium">Objetivo:</span> {user.goal || "Sin dato"}</p>
+                <p><span className="font-medium">Disponibilidad:</span> {user.weeklyAvailability || "Sin dato"}</p>
+              </>
+            ) : null}
           </div>
         </section>
       ) : null}
