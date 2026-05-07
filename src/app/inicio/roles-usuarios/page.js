@@ -120,13 +120,27 @@ function countUsersInSubtree(roleId, usersByRoleId, childrenByParent) {
   );
 }
 
+function getLevelAccent(level) {
+  const accents = [
+    "from-cyan-500 to-sky-500",
+    "from-emerald-500 to-teal-500",
+    "from-violet-500 to-fuchsia-500",
+    "from-amber-500 to-orange-500",
+  ];
+
+  return accents[level % accents.length];
+}
+
 function RoleNode({ role, level, childrenByParent, usersByRoleId }) {
   const users = usersByRoleId.get(Number(role.id)) || [];
   const children = childrenByParent.get(Number(role.id)) || [];
   const totalInSubtree = countUsersInSubtree(role.id, usersByRoleId, childrenByParent);
+  const accent = getLevelAccent(level);
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <article className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg">
+      <div className={`absolute left-0 top-0 h-1 w-full bg-gradient-to-r ${accent}`} />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Rol #{role.id}</p>
@@ -137,7 +151,7 @@ function RoleNode({ role, level, childrenByParent, usersByRoleId }) {
         </div>
         <Link
           href={`/inicio/roles-usuarios/${role.id}`}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 hover:shadow-sm"
         >
           Gestionar rol
         </Link>
@@ -149,7 +163,7 @@ function RoleNode({ role, level, childrenByParent, usersByRoleId }) {
             <Link
               key={user.id}
               href={`/inicio/roles-usuarios/${role.id}/${user.id}`}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm"
             >
               <span className="font-medium text-slate-900">{user.username || `Usuario #${user.id}`}</span>
               <span className="ml-2 text-xs text-slate-500">{user.email || "Sin email"}</span>
@@ -228,9 +242,14 @@ export default async function RolesUsuariosPage() {
 
   return (
     <section className="space-y-6">
-      <header className="rounded-2xl bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Roles y usuarios</h1>
-        <p className="mt-3 text-slate-600">Estructura jerarquica de roles (padres e hijos) hasta usuarios.</p>
+      <header className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-8 text-white shadow-lg">
+        <div className="absolute -right-14 -top-14 h-44 w-44 rounded-full bg-cyan-400/20 blur-2xl" />
+        <div className="absolute -bottom-10 left-8 h-32 w-32 rounded-full bg-emerald-400/20 blur-2xl" />
+        <div className="relative">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Estructura organizacional</p>
+          <h1 className="mt-2 text-3xl font-semibold text-white">Roles y usuarios</h1>
+          <p className="mt-3 max-w-2xl text-slate-200">Vista jerárquica de roles padre/hijo y usuarios asociados.</p>
+        </div>
       </header>
 
       {canCreateRoles ? <RoleCreateForm roles={allRoles} /> : null}
