@@ -61,6 +61,27 @@ function isAthleteRoleName(value) {
   return ["athlete", "atleta"].includes(String(value || "").trim().toLowerCase());
 }
 
+function isAdminOrGymRoleName(value) {
+  return ["admin", "administrador", "gym", "gimnasio"].includes(
+    String(value || "").trim().toLowerCase()
+  );
+}
+
+function resolveGymOwnerId(candidate) {
+  if (!candidate) {
+    return null;
+  }
+
+  const roleName = candidate?.Rol?.name || "";
+  if (isAdminOrGymRoleName(roleName)) {
+    const ownId = Number(candidate?.id);
+    return Number.isFinite(ownId) && ownId > 0 ? ownId : null;
+  }
+
+  const ownerId = Number(candidate?.idAdminOwner);
+  return Number.isFinite(ownerId) && ownerId > 0 ? ownerId : null;
+}
+
 async function fetchAthleteAssignedRoutines(athleteId, token) {
   const response = await fetch(`${ATHLETE_ASSIGNED_ROUTINES_URL}${athleteId}`, {
     cache: "no-store",
@@ -86,6 +107,7 @@ export default async function UserProfilePage({ params, searchParams }) {
   let errorMessage = "";
   let role = null;
   let user = null;
+  let users = [];
   let userRoleName = "";
   let athleteRoleId = null;
   let routines = [];
@@ -99,10 +121,11 @@ export default async function UserProfilePage({ params, searchParams }) {
     const token = cookieStore.get("token")?.value;
 
     // Roles y usuarios son el minimo necesario para renderizar el perfil.
-    const [roles, users] = await Promise.all([
+    const [roles, fetchedUsers] = await Promise.all([
       fetchList(ROLES_URL, "No se pudieron cargar los roles.", token),
       fetchList(USERS_URL, "No se pudieron cargar los usuarios.", token),
     ]);
+    users = fetchedUsers;
 
     // Estos recursos pueden fallar por permisos de rol; la vista sigue operativa con estados vacios.
     const [fetchedRoutines, userLinks] = await Promise.all([
@@ -159,6 +182,26 @@ export default async function UserProfilePage({ params, searchParams }) {
   const backFallbackHref = normalizedCoachId
     ? `/inicio/roles-usuarios/${roleId}/${normalizedCoachId}`
     : `/inicio/roles-usuarios/${roleId}`;
+  const selectedCoachUser = normalizedCoachId
+    ? users.find((item) => Number(item?.id) === Number(normalizedCoachId)) || null
+    : null;
+  const selectedCoachGymOwnerId = resolveGymOwnerId(selectedCoachUser);
+  const coachRoutinesWithinGym =
+    normalizedCoachId && selectedCoachGymOwnerId
+      ? routines.filter((routine) => {
+          const routineOwnerId = Number(routine?.idUser);
+          if (!Number.isFinite(routineOwnerId) || routineOwnerId <= 0) {
+            return false;
+          }
+
+          if (routineOwnerId === Number(normalizedCoachId)) {
+            return true;
+          }
+
+          const ownerUser = users.find((item) => Number(item?.id) === routineOwnerId);
+          return resolveGymOwnerId(ownerUser) === selectedCoachGymOwnerId;
+        })
+      : routines.filter((routine) => String(routine?.idUser) === String(normalizedCoachId));
 
   return (
     <section className="space-y-6 text-slate-100">
@@ -262,9 +305,7 @@ export default async function UserProfilePage({ params, searchParams }) {
         <AthleteRoutineAssignment
           athleteId={user.id}
           coachId={normalizedCoachId}
-          coachRoutines={routines.filter(
-            (routine) => String(routine?.idUser) === String(normalizedCoachId)
-          )}
+          coachRoutines={coachRoutinesWithinGym}
         />
       ) : null}
 

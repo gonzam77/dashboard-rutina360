@@ -140,6 +140,7 @@ export default async function RolUsuariosDetallePage({ params }) {
   let roleKey = "unknown";
   let viewerUser = null;
   let coachRoleId = null;
+  let gymOwners = [];
 
   try {
     const cookieStore = await cookies();
@@ -148,9 +149,10 @@ export default async function RolUsuariosDetallePage({ params }) {
     roleKey = normalizeRoleKey(sessionUser?.roleName);
     const viewerId = Number(sessionUser?.id) || null;
 
-    const [roleResult, usersResult, fetchedViewerUser, userLinks] = await Promise.all([
+    const [roleResult, usersResult, allUsers, fetchedViewerUser, userLinks] = await Promise.all([
       getRoleById(roleId, token),
       getUsers(roleId, token),
+      fetchUsersFrom(USERS_URL, token),
       getUserById(viewerId, token),
       fetchUserLinks(token),
     ]);
@@ -173,6 +175,18 @@ export default async function RolUsuariosDetallePage({ params }) {
       viewerAdminOwnerId,
       userLinks
     );
+
+    if (roleKey === "super_admin") {
+      const sourceUsers = Array.isArray(allUsers) ? allUsers : [];
+      gymOwners = sourceUsers
+        .filter((candidate) => ["admin", "administrador", "gym", "gimnasio"].includes(String(candidate?.Rol?.name || "").trim().toLowerCase()))
+        .map((candidate) => ({
+          id: candidate.id,
+          username: candidate.username || `Gym #${candidate.id}`,
+          email: candidate.email || "",
+        }))
+        .sort((a, b) => String(a.username).localeCompare(String(b.username), "es"));
+    }
   } catch (error) {
     errorMessage = error.message;
   }
@@ -211,7 +225,13 @@ export default async function RolUsuariosDetallePage({ params }) {
       {errorMessage ? (
         <div className="rounded-2xl border border-red-300/40 bg-red-950/40 p-4 text-red-200">{errorMessage}</div>
       ) : (
-        <RoleUsersManager roleId={roleId} roleName={role?.name || ""} users={users} />
+        <RoleUsersManager
+          roleId={roleId}
+          roleName={role?.name || ""}
+          users={users}
+          viewerRoleKey={roleKey}
+          gymOwners={gymOwners}
+        />
       )}
     </section>
   );

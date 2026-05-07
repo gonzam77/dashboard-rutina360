@@ -30,7 +30,15 @@ const MENU_BY_ROLE = {
 };
 
 export default function SideMenu({ username = "Usuario", role = "Sin rol", roleKey = "unknown" }) {
-  const menuItems = MENU_BY_ROLE[roleKey] || MENU_BY_ROLE.unknown;
+  const normalizedRoleName = String(role || "").trim().toLowerCase();
+  const isGymRole = normalizedRoleName === "gym" || normalizedRoleName === "gimnasio";
+  const menuItems =
+    roleKey === "admin" && !isGymRole
+      ? [
+          { href: "/inicio", label: "Panel administrativo" },
+          { href: "/inicio/roles-usuarios", label: "Roles y usuarios" },
+        ]
+      : MENU_BY_ROLE[roleKey] || MENU_BY_ROLE.unknown;
   const [isOpen, setIsOpen] = useState(false);
 
   return (

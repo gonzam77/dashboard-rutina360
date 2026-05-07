@@ -2,7 +2,10 @@
 import { cookies } from "next/headers";
 import { firstNonEmptyString, normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 
-function buildRoleHome(roleKey, profileHref) {
+function buildRoleHome(roleKey, profileHref, roleName) {
+  const normalizedRoleName = String(roleName || "").trim().toLowerCase();
+  const isGymRole = normalizedRoleName === "gym" || normalizedRoleName === "gimnasio";
+
   if (roleKey === "super_admin") {
     return {
       title: "Panel de Super Administrador",
@@ -17,14 +20,25 @@ function buildRoleHome(roleKey, profileHref) {
   }
 
   if (roleKey === "admin") {
+    if (isGymRole) {
+      return {
+        title: "Panel del Gimnasio",
+        description: "Gestiona coaches, atletas y rutinas de tu gimnasio.",
+        actions: [
+          ...(profileHref ? [{ href: profileHref, label: "Ir a mi perfil" }] : []),
+          { href: "/inicio/roles-usuarios", label: "Gestionar coaches y atletas" },
+          { href: "/inicio/rutinas-creadas", label: "Rutinas del gimnasio" },
+          { href: "/inicio/catalogo-ejercicios", label: "Gestionar catalogo" },
+        ],
+      };
+    }
+
     return {
       title: "Panel del Administrador",
-      description: "Gestiona coaches, atletas y rutinas de tu gimnasio.",
+      description: "Gestiona los roles y usuarios de tu propia estructura.",
       actions: [
         ...(profileHref ? [{ href: profileHref, label: "Ir a mi perfil" }] : []),
-        { href: "/inicio/roles-usuarios", label: "Gestionar coaches y atletas" },
-        { href: "/inicio/rutinas-creadas", label: "Rutinas del gimnasio" },
-        { href: "/inicio/catalogo-ejercicios", label: "Gestionar catalogo" },
+        { href: "/inicio/roles-usuarios", label: "Gestionar roles y usuarios" },
       ],
     };
   }
@@ -86,7 +100,7 @@ export default async function InicioPage() {
     Number.isFinite(ownRoleId) && ownRoleId > 0 && Number.isFinite(ownUserId) && ownUserId > 0
       ? `/inicio/roles-usuarios/${ownRoleId}/${ownUserId}`
       : "";
-  const view = buildRoleHome(roleKey, profileHref);
+  const view = buildRoleHome(roleKey, profileHref, roleName);
 
   return (
     <div className="space-y-6">

@@ -110,6 +110,28 @@ function buildRoleTree(roles) {
   return { childrenByParent, roots };
 }
 
+function collectDescendantRoleIds(parentRoleId, childrenByParent) {
+  const collected = new Set();
+  const stack = [...(childrenByParent.get(Number(parentRoleId)) || [])];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    const currentId = Number(current?.id);
+
+    if (!Number.isFinite(currentId) || collected.has(currentId)) {
+      continue;
+    }
+
+    collected.add(currentId);
+    const children = childrenByParent.get(currentId) || [];
+    for (const child of children) {
+      stack.push(child);
+    }
+  }
+
+  return collected;
+}
+
 function countUsersInSubtree(roleId, usersByRoleId, childrenByParent) {
   const directCount = (usersByRoleId.get(Number(roleId)) || []).length;
   const children = childrenByParent.get(Number(roleId)) || [];
@@ -196,13 +218,16 @@ export default async function RolesUsuariosPage() {
   let usersByRoleId = new Map();
   let allRoles = [];
   let canCreateRoles = false;
+  let viewerRoleName = "";
 
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
     const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
     const roleKey = normalizeRoleKey(sessionUser?.roleName);
+    viewerRoleName = String(sessionUser?.roleName || "").trim().toLowerCase();
     const viewerId = Number(sessionUser?.id) || null;
+    const viewerRoleId = Number(sessionUser?.idRole) || null;
     canCreateRoles = roleKey === "super_admin" && viewerId === 1;
 
     const [roles, users, userLinks] = await Promise.all([getRoles(token), getUsers(token), getUserLinks(token)]);
@@ -235,6 +260,37 @@ export default async function RolesUsuariosPage() {
         const name = String(root?.name || "").trim().toLowerCase();
         return name === "gym" || name === "gimnasio";
       });
+    }
+
+    const isGymViewer = viewerRoleName === "gym" || viewerRoleName === "gimnasio";
+    if (isGymViewer) {
+      const gymVisibleRoles = allRoles.filter((role) => {
+        const roleName = String(role?.name || "").trim().toLowerCase();
+        return roleName === "coach" || roleName === "athlete" || roleName === "atleta";
+      });
+      const allowedIds = new Set(
+        gymVisibleRoles.map((role) => Number(role.id)).filter((id) => Number.isFinite(id))
+      );
+
+      roots = gymVisibleRoles;
+      childrenByParent = new Map(
+        [...childrenByParent.entries()].map(([parentId, children]) => [
+          parentId,
+          children.filter((child) => allowedIds.has(Number(child?.id))),
+        ])
+      );
+    }
+
+    const isAdminViewer = viewerRoleName === "admin" || viewerRoleName === "administrador";
+    if (isAdminViewer && Number.isFinite(viewerRoleId) && viewerRoleId > 0) {
+      const visibleRoleIds = collectDescendantRoleIds(viewerRoleId, childrenByParent);
+      roots = (childrenByParent.get(viewerRoleId) || []).filter((role) => visibleRoleIds.has(Number(role?.id)));
+      childrenByParent = new Map(
+        [...childrenByParent.entries()].map(([parentId, children]) => [
+          parentId,
+          children.filter((child) => visibleRoleIds.has(Number(child?.id))),
+        ])
+      );
     }
   } catch (error) {
     errorMessage = error.message;

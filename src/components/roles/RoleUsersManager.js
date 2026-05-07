@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function RoleUsersManager({ roleId, roleName, users }) {
+export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKey = "unknown", gymOwners = [] }) {
   const router = useRouter();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [username, setUsername] = useState("");
@@ -22,9 +22,12 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
   const [error, setError] = useState("");
 
   const isAthleteRole = ["athlete", "atleta"].includes(String(roleName).trim().toLowerCase());
+  const isCoachRole = String(roleName).trim().toLowerCase() === "coach";
   const isAdminRole = ["admin", "administrador"].includes(String(roleName).trim().toLowerCase());
   const isGymRole = ["gym", "gimnasio"].includes(String(roleName).trim().toLowerCase());
   const requiresPersonalData = !isAdminRole && !isGymRole;
+  const requiresGymOwnerSelection = viewerRoleKey === "super_admin" && (isAthleteRole || isCoachRole);
+  const [selectedGymOwnerId, setSelectedGymOwnerId] = useState("");
 
   function resetCreateForm() {
     setUsername("");
@@ -36,6 +39,7 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
     setWeight("");
     setGoal("");
     setWeeklyAvailability("");
+    setSelectedGymOwnerId("");
   }
 
   function openCreateModal() {
@@ -66,6 +70,11 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
         return;
       }
 
+      if (requiresGymOwnerSelection && (!selectedGymOwnerId || Number(selectedGymOwnerId) <= 0)) {
+        setError("Debes seleccionar el gimnasio al que pertenece este usuario.");
+        return;
+      }
+
       const response = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -75,6 +84,7 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
           password,
           ...(requiresPersonalData ? { birthDate, gender } : {}),
           idRole: Number(roleId),
+          ...(requiresGymOwnerSelection ? { idAdminOwner: Number(selectedGymOwnerId) } : {}),
           ...(isAthleteRole
             ? {
                 height: Number(height),
@@ -271,6 +281,21 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
                 onChange={(event) => setEmail(event.target.value)}
                 className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white"
               />
+              {requiresGymOwnerSelection ? (
+                <select
+                  required
+                  value={selectedGymOwnerId}
+                  onChange={(event) => setSelectedGymOwnerId(event.target.value)}
+                  className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white md:col-span-2"
+                >
+                  <option value="" disabled>Seleccionar gym propietario</option>
+                  {gymOwners.map((owner) => (
+                    <option key={owner.id} value={owner.id}>
+                      {owner.username} ({owner.email || `ID ${owner.id}`})
+                    </option>
+                  ))}
+                </select>
+              ) : null}
               {requiresPersonalData ? (
                 <>
                   <input
