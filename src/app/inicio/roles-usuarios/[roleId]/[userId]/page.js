@@ -161,22 +161,23 @@ export default async function UserProfilePage({ params, searchParams }) {
     : `/inicio/roles-usuarios/${roleId}`;
 
   return (
-    <section className="space-y-6">
-      <header className="rounded-2xl bg-white p-8 shadow-sm">
+    <section className="space-y-6 text-slate-100">
+      <header className="rounded-3xl border border-white/15 bg-[#0f2a46] p-8 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Perfil de usuario</h1>
-            <p className="mt-2 text-slate-600">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">Rutina360</p>
+            <h1 className="mt-1 text-3xl font-extrabold text-white">Perfil de usuario</h1>
+            <p className="mt-2 text-white/80">
               {user ? `${user.username} · Usuario #${user.id}` : `Usuario #${userId}`}
             </p>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-cyan-300">
               Rol: {userRoleName || (role ? role.name : `#${roleId}`)}
             </p>
           </div>
           <BackNavButton
             fallbackHref={backFallbackHref}
             allowHistoryBack={!cameFromRoutineDetail}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
           >
             Volver a usuarios
           </BackNavButton>
@@ -184,15 +185,15 @@ export default async function UserProfilePage({ params, searchParams }) {
       </header>
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
+        <div className="rounded-2xl border border-red-300/40 bg-red-950/40 p-4 text-red-200">
           {errorMessage}
         </div>
       ) : null}
 
       {!errorMessage && user ? (
-        <section className="rounded-2xl bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Datos del perfil</h2>
-          <div className="mt-4 grid grid-cols-1 gap-3 text-sm text-slate-700 md:grid-cols-2">
+        <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+          <h2 className="text-lg font-bold text-white">Datos del perfil</h2>
+          <div className="mt-4 grid grid-cols-1 gap-3 text-sm text-white/85 md:grid-cols-2">
             <p><span className="font-medium">Username:</span> {user.username || "Sin dato"}</p>
             <p><span className="font-medium">Email:</span> {user.email || "Sin dato"}</p>
             <p><span className="font-medium">Nacimiento:</span> {formatDate(user.birthDate)}</p>
@@ -212,38 +213,41 @@ export default async function UserProfilePage({ params, searchParams }) {
       ) : null}
 
       {!errorMessage && user && isCoachProfile ? (
-        <section className="rounded-2xl bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Rutinas del coach</h2>
+        <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+          <h2 className="text-lg font-bold text-white">Rutinas del coach</h2>
           <CoachRoutinesList roleId={roleId} userId={user.id} coachId={user.id} routines={coachRoutines} />
         </section>
       ) : null}
 
       {!errorMessage && user && isCoachProfile ? (
-        <section className="rounded-2xl bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Atletas asignados</h2>
+        <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+          <h2 className="text-lg font-bold text-white">Atletas asignados</h2>
           <CoachAthleteAssignment coachId={user.id} athletes={availableAthletes} athleteRoleId={athleteRoleId} />
           {assignedAthletes.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-600">Este coach no tiene atletas asignados.</p>
+            <p className="mt-3 text-sm text-white/75">Este coach no tiene atletas asignados.</p>
           ) : (
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               {assignedAthletes.map((link) => (
-                <article key={link.id} className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Vinculo #{link.id}</p>
-                  <p className="mt-1 font-semibold text-slate-900">
+                <article
+                  key={link.id}
+                  className="rounded-2xl border border-white/15 bg-[#0f2a46] p-4 shadow-[0_6px_18px_rgba(0,0,0,0.22)]"
+                >
+                  <p className="text-xs uppercase tracking-wide text-white/60">Vinculo #{link.id}</p>
+                  <p className="mt-1 font-semibold text-white">
                     {link?.athlete?.username || `Atleta #${link.idAthlete}`}
                   </p>
-                  <p className="mt-2 text-sm text-slate-700">
+                  <p className="mt-2 text-sm text-white/80">
                     Email: {link?.athlete?.email || "Sin dato"}
                   </p>
-                  <p className="text-sm text-slate-700">
+                  <p className="text-sm text-white/80">
                     Disponibilidad: {link?.athlete?.weeklyAvailability || "Sin dato"}
                   </p>
-                  <p className="text-sm text-slate-700">
+                  <p className="text-sm text-white/80">
                     Alta del vinculo: {formatDate(link?.createdAt)}
                   </p>
                   <Link
                     href={`/inicio/roles-usuarios/${roleId}/${link.idAthlete}?coachId=${user.id}`}
-                    className="mt-3 inline-block rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    className="mt-3 inline-block rounded-lg border border-cyan-300/40 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
                   >
                     Ir al perfil del atleta
                   </Link>
@@ -265,8 +269,8 @@ export default async function UserProfilePage({ params, searchParams }) {
       ) : null}
 
       {!errorMessage && user && isAthleteProfile ? (
-        <section className="rounded-2xl bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Rutinas asignadas al atleta</h2>
+        <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+          <h2 className="text-lg font-bold text-white">Rutinas asignadas al atleta</h2>
           <AthleteAssignedRoutinesList
             roleId={roleId}
             athleteId={user.id}

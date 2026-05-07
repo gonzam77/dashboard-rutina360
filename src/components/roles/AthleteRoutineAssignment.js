@@ -73,20 +73,20 @@ export default function AthleteRoutineAssignment({ athleteId, coachId, coachRout
   }
 
   return (
-    <section className="rounded-2xl bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-900">Gestion de rutina del atleta</h2>
+    <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+      <h2 className="text-lg font-semibold text-white">Gestion de rutina del atleta</h2>
 
       {coachRoutines.length === 0 ? (
-        <p className="mt-3 text-sm text-slate-600">Este coach no tiene rutinas para asignar.</p>
+        <p className="mt-3 text-sm text-white/75">Este coach no tiene rutinas para asignar.</p>
       ) : (
         <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={handleAssignRoutine}>
-          <label className="flex min-w-[260px] flex-col text-sm text-slate-700">
+          <label className="flex min-w-[260px] flex-col text-sm text-white/85">
             Rutina del coach
             <select
               required
               value={selectedRoutineId}
               onChange={(event) => setSelectedRoutineId(event.target.value)}
-              className="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2"
+              className="mt-1 rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white"
             >
               <option value="" disabled>Seleccionar rutina</option>
               {coachRoutines.map((routine) => (
@@ -99,14 +99,14 @@ export default function AthleteRoutineAssignment({ athleteId, coachId, coachRout
           <button
             type="submit"
             disabled={loadingAssign}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60"
           >
             {loadingAssign ? "Asignando..." : "Asignar rutina"}
           </button>
         </form>
       )}
 
-      <div className="mt-5 border-t border-slate-200 pt-4">
+      <div className="mt-5 border-t border-white/15 pt-4">
         <button
           type="button"
           onClick={handleUnlinkAthlete}
@@ -117,8 +117,8 @@ export default function AthleteRoutineAssignment({ athleteId, coachId, coachRout
         </button>
       </div>
 
-      {message ? <p className="mt-3 text-sm text-emerald-700">{message}</p> : null}
-      {error ? <p className="mt-3 text-sm text-rose-700">{error}</p> : null}
+      {message ? <p className="mt-3 text-sm text-cyan-100">{message}</p> : null}
+      {error ? <p className="mt-3 text-sm text-rose-200">{error}</p> : null}
     </section>
   );
 }

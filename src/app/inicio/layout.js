@@ -107,9 +107,11 @@ export default async function InicioLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 lg:flex">
+    <div className="min-h-screen bg-[var(--azul-profundo)] lg:flex">
       <SideMenu username={username} role={role} roleKey={roleKey} />
-      <main className="flex-1 p-6 lg:p-8">{children}</main>
+      <main className="flex-1 bg-[radial-gradient(circle_at_top_right,rgba(68,213,255,0.08),transparent_45%),var(--azul-profundo)] p-6 lg:p-8">
+        {children}
+      </main>
     </div>
   );
 }

@@ -146,7 +146,7 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
   return (
     <div className="mt-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-600">Administra los atletas vinculados a este coach.</p>
+        <p className="text-sm text-white/75">Administra los atletas vinculados a este coach.</p>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -155,7 +155,7 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
               setMessage("");
               setIsAssignModalOpen(true);
             }}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
           >
             Asignar atleta
           </button>
@@ -166,47 +166,47 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
               setMessage("");
               setIsCreateModalOpen(true);
             }}
-            className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600"
+            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
           >
             Crear atleta
           </button>
         </div>
       </div>
 
-      {message ? <p className="mt-3 text-sm text-emerald-700">{message}</p> : null}
-      {error ? <p className="mt-3 text-sm text-rose-700">{error}</p> : null}
+      {message ? <p className="mt-3 text-sm text-cyan-100">{message}</p> : null}
+      {error ? <p className="mt-3 text-sm text-rose-200">{error}</p> : null}
 
       {isAssignModalOpen ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#071a2f]/70 p-4"
           onClick={() => setIsAssignModalOpen(false)}
         >
           <div
-            className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl"
+            className="w-full max-w-xl rounded-2xl border border-white/15 bg-[#0f2a46] p-6 shadow-xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between gap-2">
-              <h3 className="text-lg font-semibold text-slate-900">Asignar atleta existente</h3>
+              <h3 className="text-lg font-semibold text-white">Asignar atleta existente</h3>
               <button
                 type="button"
                 onClick={() => setIsAssignModalOpen(false)}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-lg border border-white/20 px-3 py-1.5 text-sm font-medium text-white/85 hover:bg-white/10"
               >
                 Cerrar
               </button>
             </div>
 
             {athletes.length === 0 ? (
-              <p className="text-sm text-slate-600">No hay atletas disponibles para asignar.</p>
+              <p className="text-sm text-white/75">No hay atletas disponibles para asignar.</p>
             ) : (
               <form className="space-y-3" onSubmit={handleAssign}>
-                <label className="block text-sm text-slate-700">
+                <label className="block text-sm text-white/85">
                   Atleta
                   <select
                     required
                     value={selectedAthleteId}
                     onChange={(event) => setSelectedAthleteId(event.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+                    className="mt-1 w-full rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white"
                   >
                     <option value="" disabled>Seleccionar atleta</option>
                     {athletes.map((athlete) => (
@@ -220,7 +220,7 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
                 <button
                   type="submit"
                   disabled={loading}
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+                  className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60"
                 >
                   {loading ? "Asignando..." : "Confirmar asignacion"}
                 </button>
@@ -232,38 +232,38 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
 
       {isCreateModalOpen ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#071a2f]/70 p-4"
           onClick={() => setIsCreateModalOpen(false)}
         >
           <div
-            className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl"
+            className="w-full max-w-xl rounded-2xl border border-white/15 bg-[#0f2a46] p-6 shadow-xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between gap-2">
-              <h3 className="text-lg font-semibold text-slate-900">Crear atleta y asignar</h3>
+              <h3 className="text-lg font-semibold text-white">Crear atleta y asignar</h3>
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-lg border border-white/20 px-3 py-1.5 text-sm font-medium text-white/85 hover:bg-white/10"
               >
                 Cerrar
               </button>
             </div>
 
             <form className="grid gap-3" onSubmit={handleCreateAndAssignAthlete}>
-              <input required type="text" placeholder="Username" value={username} onChange={(event) => setUsername(event.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-              <input required type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-              <input required type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-              <select required value={gender} onChange={(event) => setGender(event.target.value)} className="rounded-lg border border-slate-300 bg-white px-3 py-2">
+              <input required type="text" placeholder="Username" value={username} onChange={(event) => setUsername(event.target.value)} className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55" />
+              <input required type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55" />
+              <input required type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white" />
+              <select required value={gender} onChange={(event) => setGender(event.target.value)} className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white">
                 <option value="" disabled>Seleccionar genero</option>
                 <option value="masculino">Masculino</option>
                 <option value="femenino">Femenino</option>
               </select>
-              <input required type="password" placeholder="Password" value={password} onChange={(event) => setPassword(event.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-              <input required type="number" min="1" placeholder="Altura (cm)" value={height} onChange={(event) => setHeight(event.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-              <input required type="number" min="1" placeholder="Peso (kg)" value={weight} onChange={(event) => setWeight(event.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-              <input type="text" placeholder="Objetivo (opcional)" value={goal} onChange={(event) => setGoal(event.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-              <select required value={weeklyAvailability} onChange={(event) => setWeeklyAvailability(event.target.value)} className="rounded-lg border border-slate-300 bg-white px-3 py-2">
+              <input required type="password" placeholder="Password" value={password} onChange={(event) => setPassword(event.target.value)} className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55" />
+              <input required type="number" min="1" placeholder="Altura (cm)" value={height} onChange={(event) => setHeight(event.target.value)} className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55" />
+              <input required type="number" min="1" placeholder="Peso (kg)" value={weight} onChange={(event) => setWeight(event.target.value)} className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55" />
+              <input type="text" placeholder="Objetivo (opcional)" value={goal} onChange={(event) => setGoal(event.target.value)} className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55" />
+              <select required value={weeklyAvailability} onChange={(event) => setWeeklyAvailability(event.target.value)} className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white">
                 <option value="" disabled>Seleccionar disponibilidad semanal</option>
                 <option value="1 dia a la semana">1 dia a la semana</option>
                 <option value="2 dias a la semana">2 dias a la semana</option>
@@ -277,7 +277,7 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-60"
+                className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60"
               >
                 {loading ? "Creando..." : "Crear y asignar atleta"}
               </button>

@@ -55,13 +55,13 @@ export default function AthleteAssignedRoutinesList({ roleId, athleteId, coachId
   }
 
   if (assignments.length === 0) {
-    return <p className="mt-3 text-sm text-slate-600">Este atleta aun no tiene rutinas asignadas.</p>;
+    return <p className="mt-3 text-sm text-white/75">Este atleta aun no tiene rutinas asignadas.</p>;
   }
 
   return (
     <div className="mt-4">
-      {message ? <p className="mb-3 text-sm text-emerald-700">{message}</p> : null}
-      {error ? <p className="mb-3 text-sm text-rose-700">{error}</p> : null}
+      {message ? <p className="mb-3 text-sm text-cyan-100">{message}</p> : null}
+      {error ? <p className="mb-3 text-sm text-rose-200">{error}</p> : null}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {assignments.map((assignment) => {
           const routine = assignment?.Routine;
@@ -72,16 +72,16 @@ export default function AthleteAssignedRoutinesList({ roleId, athleteId, coachId
           const key = `${idRoutine}-${athleteId}`;
 
           return (
-            <article key={assignment.id} className="rounded-xl border border-slate-200 p-4">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Asignacion #{assignment.id}</p>
-              <p className="mt-1 font-semibold text-slate-900">
+            <article key={assignment.id} className="rounded-2xl border border-white/15 bg-[#0f2a46] p-4">
+              <p className="text-xs uppercase tracking-wide text-white/60">Asignacion #{assignment.id}</p>
+              <p className="mt-1 font-semibold text-white">
                 {routine?.name || `Rutina #${assignment?.idRoutine || "-"}`}
               </p>
-              <p className="mt-2 text-sm text-slate-700">ID rutina: {idRoutine || "-"}</p>
-              <p className="text-sm text-slate-700">Orden: {routine?.order || "-"}</p>
-              <p className="text-sm text-slate-700">Tiempo: {routine?.time || "-"} min</p>
-              <p className="text-sm text-slate-700">Ejercicios: {routineExercises.length}</p>
-              <p className="text-sm text-slate-700">Asignada: {formatDate(assignment?.createdAt)}</p>
+              <p className="mt-2 text-sm text-white/80">ID rutina: {idRoutine || "-"}</p>
+              <p className="text-sm text-white/80">Orden: {routine?.order || "-"}</p>
+              <p className="text-sm text-white/80">Tiempo: {routine?.time || "-"} min</p>
+              <p className="text-sm text-white/80">Ejercicios: {routineExercises.length}</p>
+              <p className="text-sm text-white/80">Asignada: {formatDate(assignment?.createdAt)}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {routine?.id ? (
                   <Link
@@ -90,7 +90,7 @@ export default function AthleteAssignedRoutinesList({ roleId, athleteId, coachId
                         ? `/inicio/roles-usuarios/${roleId}/${athleteId}/rutinas/${routine.id}?source=athlete-profile&coachId=${coachId}`
                         : `/inicio/roles-usuarios/${roleId}/${athleteId}/rutinas/${routine.id}?source=athlete-profile`
                     }
-                    className="inline-block rounded-lg border border-indigo-300 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+                    className="inline-block rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
                   >
                     Ver rutina
                   </Link>

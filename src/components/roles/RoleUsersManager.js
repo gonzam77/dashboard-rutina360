@@ -133,36 +133,36 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
     const isInactive = user?.isActive === false;
 
     if (isDeleted) {
-      return { label: "Eliminado", className: "bg-rose-100 text-rose-700" };
+      return { label: "Eliminado", className: "border border-rose-300/40 bg-rose-900/30 text-rose-100" };
     }
 
     if (isInactive) {
-      return { label: "Desactivado", className: "bg-amber-100 text-amber-700" };
+      return { label: "Desactivado", className: "border border-amber-300/40 bg-amber-900/30 text-amber-100" };
     }
 
-    return { label: "Activo", className: "bg-emerald-100 text-emerald-700" };
+    return { label: "Activo", className: "border border-cyan-300/35 bg-cyan-300/10 text-cyan-100" };
   }
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Usuarios registrados</h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <h2 className="text-lg font-semibold text-white">Usuarios registrados</h2>
+            <p className="mt-1 text-sm text-white/75">
               {users.length === 1 ? "1 usuario en este rol." : `${users.length} usuarios en este rol.`}
             </p>
           </div>
           <button
             type="button"
             onClick={openCreateModal}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
           >
             Agregar usuario
           </button>
         </div>
-        {message ? <p className="mt-3 text-sm text-emerald-700">{message}</p> : null}
-        {error && !isCreateModalOpen ? <p className="mt-3 text-sm text-rose-700">{error}</p> : null}
+        {message ? <p className="mt-3 text-sm text-cyan-100">{message}</p> : null}
+        {error && !isCreateModalOpen ? <p className="mt-3 text-sm text-rose-200">{error}</p> : null}
       </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -173,14 +173,14 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
           return (
             <article
               key={user.id}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+              className="rounded-3xl border border-white/15 bg-[#17385a] p-5 shadow-sm"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  <p className="text-xs font-medium uppercase tracking-wide text-white/60">
                     Usuario #{user.id}
                   </p>
-                  <p className="mt-2 text-lg font-semibold text-slate-900">
+                  <p className="mt-2 text-lg font-semibold text-white">
                     {user.username}
                   </p>
                 </div>
@@ -189,12 +189,12 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
                 </span>
               </div>
 
-              <p className="mt-2 text-sm text-slate-600">{user.email || "Sin email"}</p>
+              <p className="mt-2 text-sm text-white/75">{user.email || "Sin email"}</p>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link
                   href={`/inicio/roles-usuarios/${roleId}/${user.id}`}
-                  className="rounded-lg border border-indigo-300 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+                  className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
                 >
                   Ver perfil
                 </Link>
@@ -202,7 +202,7 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
                   type="button"
                   onClick={() => handleDeleteUser(user.id, false)}
                   disabled={actionLoadingId === user.id}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                  className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium text-white/85 hover:bg-white/10 disabled:opacity-60"
                 >
                   Eliminar
                 </button>
@@ -224,28 +224,28 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
 
       {isCreateModalOpen ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#071a2f]/70 p-4"
           onClick={closeCreateModal}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-user-title"
-            className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl"
+            className="w-full max-w-2xl rounded-2xl border border-white/15 bg-[#0f2a46] p-6 shadow-xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h3 id="create-user-title" className="text-lg font-semibold text-slate-900">
+                <h3 id="create-user-title" className="text-lg font-semibold text-white">
                   Agregar usuario
                 </h3>
-                <p className="mt-1 text-sm text-slate-600">Crear usuario en este rol.</p>
+                <p className="mt-1 text-sm text-white/75">Crear usuario en este rol.</p>
               </div>
               <button
                 type="button"
                 onClick={closeCreateModal}
                 disabled={loading}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                className="rounded-lg border border-white/20 px-3 py-1.5 text-sm font-medium text-white/85 hover:bg-white/10 disabled:opacity-60"
               >
                 Cerrar
               </button>
@@ -259,7 +259,7 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
                 placeholder="Username"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2"
+                className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white"
               />
               <input
                 required
@@ -267,7 +267,7 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
                 placeholder="Email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2"
+                className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white"
               />
               {!isAdminRole ? (
                 <>
@@ -276,13 +276,13 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
                     type="date"
                     value={birthDate}
                     onChange={(event) => setBirthDate(event.target.value)}
-                    className="rounded-lg border border-slate-300 px-3 py-2"
+                    className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white"
                   />
                   <select
                     required
                     value={gender}
                     onChange={(event) => setGender(event.target.value)}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2"
+                    className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white"
                   >
                     <option value="" disabled>Seleccionar genero</option>
                     <option value="masculino">Masculino</option>
@@ -296,7 +296,7 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
                 placeholder="Password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2"
+                className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white md:col-span-2"
               />
               {isAthleteRole ? (
                 <>
@@ -307,7 +307,7 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
                     placeholder="Altura (cm)"
                     value={height}
                     onChange={(event) => setHeight(event.target.value)}
-                    className="rounded-lg border border-slate-300 px-3 py-2"
+                    className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white"
                   />
                   <input
                     required
@@ -316,20 +316,20 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
                     placeholder="Peso (kg)"
                     value={weight}
                     onChange={(event) => setWeight(event.target.value)}
-                    className="rounded-lg border border-slate-300 px-3 py-2"
+                    className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white"
                   />
                   <input
                     type="text"
                     placeholder="Objetivo (opcional)"
                     value={goal}
                     onChange={(event) => setGoal(event.target.value)}
-                    className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2"
+                    className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white md:col-span-2"
                   />
                   <select
                     required
                     value={weeklyAvailability}
                     onChange={(event) => setWeeklyAvailability(event.target.value)}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 md:col-span-2"
+                    className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white md:col-span-2"
                   >
                     <option value="" disabled>Seleccionar disponibilidad semanal</option>
                     <option value="1 dia a la semana">1 dia a la semana</option>
@@ -343,21 +343,21 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
                 </>
               ) : null}
 
-              {error ? <p className="text-sm text-rose-700 md:col-span-2">{error}</p> : null}
+              {error ? <p className="text-sm text-rose-200 md:col-span-2">{error}</p> : null}
 
               <div className="flex flex-wrap justify-end gap-2 md:col-span-2">
                 <button
                   type="button"
                   onClick={closeCreateModal}
                   disabled={loading}
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                  className="rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white/85 hover:bg-white/10 disabled:opacity-60"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+                  className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60"
                 >
                   {loading ? "Creando..." : "Crear usuario"}
                 </button>
@@ -369,3 +369,4 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
     </div>
   );
 }
+

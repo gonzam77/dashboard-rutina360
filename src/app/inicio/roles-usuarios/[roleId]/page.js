@@ -185,22 +185,22 @@ export default async function RolUsuariosDetallePage({ params }) {
 
   return (
     <section className="space-y-6">
-      <header className="rounded-2xl bg-white p-8 shadow-sm">
+      <header className="rounded-3xl border border-white/15 bg-[#0f2a46] p-8 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">{role ? `Usuarios del rol: ${role.name}` : "Usuarios por rol"}</h1>
-            <p className="mt-3 text-slate-600">{role ? `Rol #${role.id}` : `Rol #${roleId}`}</p>
+            <h1 className="text-3xl font-extrabold text-white">{role ? `Usuarios del rol: ${role.name}` : "Usuarios por rol"}</h1>
+            <p className="mt-3 text-white/80">{role ? `Rol #${role.id}` : `Rol #${roleId}`}</p>
           </div>
           <Link
             href="/inicio/roles-usuarios"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
           >
             Volver a roles
           </Link>
           {shouldShowAssignAthleteButton ? (
             <Link
               href={`/inicio/roles-usuarios/${coachRoleId}/${viewerUser.id}`}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
             >
               Asignar nuevo atleta
             </Link>
@@ -209,7 +209,7 @@ export default async function RolUsuariosDetallePage({ params }) {
       </header>
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">{errorMessage}</div>
+        <div className="rounded-2xl border border-red-300/40 bg-red-950/40 p-4 text-red-200">{errorMessage}</div>
       ) : (
         <RoleUsersManager roleId={roleId} roleName={role?.name || ""} users={users} />
       )}

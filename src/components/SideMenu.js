@@ -30,32 +30,32 @@ export default function SideMenu({ username = "Usuario", role = "Sin rol", roleK
   const menuItems = MENU_BY_ROLE[roleKey] || MENU_BY_ROLE.unknown;
 
   return (
-    <aside className="w-full lg:w-72 bg-slate-900 text-slate-100 lg:min-h-screen flex flex-col">
-      <div className="p-6 border-b border-slate-800">
+    <aside className="flex w-full flex-col bg-[#0a233d] text-slate-100 lg:min-h-screen lg:w-72">
+      <div className="border-b border-white/10 p-6">
         <h2 className="text-xl font-semibold">Rutina360</h2>
-        <p className="mt-1 text-sm text-slate-400">Panel administrativo</p>
-        <div className="mt-4 rounded-lg bg-slate-800/70 px-3 py-2 text-sm">
-          <p className="font-medium text-slate-100">{username}</p>
-          <p className="text-slate-300">{role}</p>
+        <p className="mt-1 text-sm text-white/65">Panel administrativo</p>
+        <div className="mt-4 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm">
+          <p className="font-medium text-white">{username}</p>
+          <p className="text-cyan-100/90">{role}</p>
         </div>
       </div>
 
-      <nav className="p-4 space-y-2 flex-1">
+      <nav className="flex-1 space-y-2 p-4">
         {menuItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
+            className="block rounded-lg border border-transparent px-3 py-2 text-sm font-medium text-white/85 transition hover:border-cyan-300/30 hover:bg-cyan-300/10 hover:text-white"
           >
             {item.label}
           </Link>
         ))}
       </nav>
 
-      <form action="/api/auth/logout" method="post" className="p-4 border-t border-slate-800">
+      <form action="/api/auth/logout" method="post" className="border-t border-white/10 p-4">
         <button
           type="submit"
-          className="w-full rounded-lg px-3 py-2 text-sm font-medium text-red-200 transition hover:bg-slate-800 hover:text-red-100"
+          className="w-full rounded-lg border border-red-300/40 bg-red-900/20 px-3 py-2 text-sm font-medium text-red-100 transition hover:bg-red-900/35"
         >
           Cerrar sesion
         </button>

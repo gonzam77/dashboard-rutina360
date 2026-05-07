@@ -122,10 +122,10 @@ function countUsersInSubtree(roleId, usersByRoleId, childrenByParent) {
 
 function getLevelAccent(level) {
   const accents = [
-    "from-cyan-500 to-sky-500",
-    "from-emerald-500 to-teal-500",
-    "from-violet-500 to-fuchsia-500",
-    "from-amber-500 to-orange-500",
+    "from-cyan-400 to-sky-500",
+    "from-cyan-500 to-blue-500",
+    "from-sky-400 to-cyan-500",
+    "from-cyan-300 to-sky-400",
   ];
 
   return accents[level % accents.length];
@@ -138,20 +138,20 @@ function RoleNode({ role, level, childrenByParent, usersByRoleId }) {
   const accent = getLevelAccent(level);
 
   return (
-    <article className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg">
+    <article className="group relative overflow-hidden rounded-3xl border border-white/15 bg-[#17385a] p-5 shadow-[0_8px_24px_rgba(0,0,0,0.28)] transition duration-300 hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-[#1b426a] hover:shadow-lg">
       <div className={`absolute left-0 top-0 h-1 w-full bg-gradient-to-r ${accent}`} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Rol #{role.id}</p>
-          <h3 className="mt-1 text-lg font-semibold text-slate-900">{role.name}</h3>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="text-xs font-medium uppercase tracking-wide text-white/60">Rol #{role.id}</p>
+          <h3 className="mt-1 text-lg font-semibold text-white">{role.name}</h3>
+          <p className="mt-1 text-xs text-white/70">
             Nivel {level + 1} | Usuarios directos: {users.length} | Usuarios en rama: {totalInSubtree}
           </p>
         </div>
         <Link
           href={`/inicio/roles-usuarios/${role.id}`}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 hover:shadow-sm"
+          className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20 hover:shadow-sm"
         >
           Gestionar rol
         </Link>
@@ -163,17 +163,17 @@ function RoleNode({ role, level, childrenByParent, usersByRoleId }) {
             <Link
               key={user.id}
               href={`/inicio/roles-usuarios/${role.id}/${user.id}`}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm"
+              className="rounded-lg border border-white/15 bg-[#0f2a46] px-3 py-2 text-sm text-white/85 transition hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-[#153452] hover:shadow-sm"
             >
-              <span className="font-medium text-slate-900">{user.username || `Usuario #${user.id}`}</span>
-              <span className="ml-2 text-xs text-slate-500">{user.email || "Sin email"}</span>
+              <span className="font-medium text-white">{user.username || `Usuario #${user.id}`}</span>
+              <span className="ml-2 text-xs text-white/65">{user.email || "Sin email"}</span>
             </Link>
           ))}
         </div>
       ) : null}
 
       {children.length > 0 ? (
-        <div className="mt-4 space-y-3 border-l-2 border-slate-100 pl-3">
+        <div className="mt-4 space-y-3 border-l-2 border-white/15 pl-3">
           {children.map((child) => (
             <RoleNode
               key={child.id}
@@ -242,24 +242,24 @@ export default async function RolesUsuariosPage() {
 
   return (
     <section className="space-y-6">
-      <header className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-8 text-white shadow-lg">
+      <header className="relative overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-[#0f2a46] via-[#123355] to-[#17385a] p-8 text-white shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
         <div className="absolute -right-14 -top-14 h-44 w-44 rounded-full bg-cyan-400/20 blur-2xl" />
-        <div className="absolute -bottom-10 left-8 h-32 w-32 rounded-full bg-emerald-400/20 blur-2xl" />
+        <div className="absolute -bottom-10 left-8 h-32 w-32 rounded-full bg-sky-400/20 blur-2xl" />
         <div className="relative">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Estructura organizacional</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-white/65">Estructura organizacional</p>
           <h1 className="mt-2 text-3xl font-semibold text-white">Roles y usuarios</h1>
-          <p className="mt-3 max-w-2xl text-slate-200">Vista jerárquica de roles padre/hijo y usuarios asociados.</p>
+          <p className="mt-3 max-w-2xl text-white/80">Vista jerárquica de roles padre/hijo y usuarios asociados.</p>
         </div>
       </header>
 
       {canCreateRoles ? <RoleCreateForm roles={allRoles} /> : null}
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">{errorMessage}</div>
+        <div className="rounded-2xl border border-red-300/40 bg-red-950/40 p-4 text-red-200">{errorMessage}</div>
       ) : null}
 
       {!errorMessage && roots.length === 0 ? (
-        <div className="rounded-2xl bg-white p-6 text-slate-600 shadow-sm">No hay roles disponibles para tu perfil.</div>
+        <div className="rounded-2xl border border-white/15 bg-[#17385a] p-6 text-white/80 shadow-sm">No hay roles disponibles para tu perfil.</div>
       ) : null}
 
       {!errorMessage && roots.length > 0 ? (

@@ -77,14 +77,14 @@ export default function ExerciseDeleteButton({
         disabled={loading}
         aria-label={`Eliminar ejercicio ${exerciseName}`}
         title={loading ? "Eliminando ejercicio" : "Eliminar ejercicio"}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 text-rose-600 transition hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300/40 bg-rose-900/20 text-rose-100 transition hover:bg-rose-900/35 hover:text-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <TrashIcon />
         <span className="sr-only">
           {loading ? "Eliminando ejercicio" : "Eliminar ejercicio"}
         </span>
       </button>
-      {error ? <p className="mt-2 max-w-44 text-right text-xs text-rose-700">{error}</p> : null}
+      {error ? <p className="mt-2 max-w-44 text-right text-xs text-rose-200">{error}</p> : null}
     </div>
   );
 }

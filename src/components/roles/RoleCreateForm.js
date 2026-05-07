@@ -54,11 +54,11 @@ export default function RoleCreateForm({ roles }) {
 
   return (
     <>
-      <section className="rounded-2xl bg-white p-6 shadow-sm">
+      <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Gestión de roles</h2>
-            <p className="mt-1 text-sm text-slate-600">Crea roles nuevos y define su jerarquía.</p>
+            <h2 className="text-lg font-semibold text-white">Gestión de roles</h2>
+            <p className="mt-1 text-sm text-white/75">Crea roles nuevos y define su jerarquía.</p>
           </div>
           <button
             type="button"
@@ -67,33 +67,33 @@ export default function RoleCreateForm({ roles }) {
               setMessage("");
               setIsOpen(true);
             }}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
           >
             Crear rol
           </button>
         </div>
-        {message ? <p className="mt-3 text-sm text-emerald-700">{message}</p> : null}
+        {message ? <p className="mt-3 text-sm text-cyan-100">{message}</p> : null}
       </section>
 
       {isOpen ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#071a2f]/70 p-4"
           onClick={() => !loading && setIsOpen(false)}
         >
           <div
-            className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl"
+            className="w-full max-w-2xl rounded-2xl border border-white/15 bg-[#0f2a46] p-6 shadow-xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Crear nuevo rol</h3>
-                <p className="mt-1 text-sm text-slate-600">Define un nombre y opcionalmente su rol padre.</p>
+                <h3 className="text-lg font-semibold text-white">Crear nuevo rol</h3>
+                <p className="mt-1 text-sm text-white/75">Define un nombre y opcionalmente su rol padre.</p>
               </div>
               <button
                 type="button"
                 disabled={loading}
                 onClick={() => setIsOpen(false)}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                className="rounded-lg border border-white/20 px-3 py-1.5 text-sm font-medium text-white/85 hover:bg-white/10 disabled:opacity-60"
               >
                 Cerrar
               </button>
@@ -106,13 +106,13 @@ export default function RoleCreateForm({ roles }) {
                 placeholder="Nombre del rol"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2"
+                className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55"
               />
 
               <select
                 value={parentId}
                 onChange={(event) => setParentId(event.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2"
+                className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white"
               >
                 <option value="">Sin padre</option>
                 {roleOptions.map((role) => (
@@ -125,13 +125,13 @@ export default function RoleCreateForm({ roles }) {
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60 md:col-span-2"
+                className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60 md:col-span-2"
               >
                 {loading ? "Creando..." : "Crear rol"}
               </button>
             </form>
 
-            {error ? <p className="mt-3 text-sm text-rose-700">{error}</p> : null}
+            {error ? <p className="mt-3 text-sm text-rose-200">{error}</p> : null}
           </div>
         </div>
       ) : null}
