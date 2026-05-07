@@ -88,9 +88,9 @@ export default function AthleteRoutineAssignment({ athleteId, coachId, coachRout
               onChange={(event) => setSelectedRoutineId(event.target.value)}
               className="mt-1 rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white"
             >
-              <option value="" disabled>Seleccionar rutina</option>
+              <option value="" disabled className="bg-white text-slate-900">Seleccionar rutina</option>
               {coachRoutines.map((routine) => (
-                <option key={routine.id} value={routine.id}>
+                <option key={routine.id} value={routine.id} className="bg-white text-slate-900">
                   {routine.name || `Rutina #${routine.id}`} (ID {routine.id})
                 </option>
               ))}

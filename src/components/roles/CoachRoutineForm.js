@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 const MUSCLE_GROUPS_URL = "https://rutina360-server.onrender.com/muscleGroup";
 const EXERCISES_URL = "https://rutina360-server.onrender.com/ejercice";
 
-export default function CoachRoutineForm({ coachId, isInModal = false }) {
+export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }) {
   const router = useRouter();
   const [routineName, setRoutineName] = useState("");
   const [routineOrder, setRoutineOrder] = useState("");
@@ -153,6 +153,9 @@ export default function CoachRoutineForm({ coachId, isInModal = false }) {
       resetDraftExercise();
       setMessage("Rutina creada correctamente.");
       router.refresh();
+      if (typeof onSaved === "function") {
+        onSaved();
+      }
     } catch {
       setError("Error de conexion al crear rutina.");
     } finally {
@@ -197,11 +200,11 @@ export default function CoachRoutineForm({ coachId, isInModal = false }) {
               <select
                 value={draftExercise.muscleGroupId}
                 onChange={(event) => updateDraftExercise("muscleGroupId", event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2 bg-white"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900"
               >
-                <option value="" disabled>Seleccionar grupo muscular</option>
+                <option value="" disabled className="bg-white text-slate-900">Seleccionar grupo muscular</option>
                 {muscleGroups.map((group) => (
-                  <option key={group.id} value={group.id}>
+                  <option key={group.id} value={group.id} className="bg-white text-slate-900">
                     {group.name}
                   </option>
                 ))}
@@ -211,13 +214,13 @@ export default function CoachRoutineForm({ coachId, isInModal = false }) {
                 value={draftExercise.idEjercice}
                 onChange={(event) => updateDraftExercise("idEjercice", event.target.value)}
                 disabled={!draftExercise.muscleGroupId}
-                className="rounded-lg border border-slate-300 px-3 py-2 bg-white disabled:bg-slate-100"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
               >
-                <option value="" disabled>
+                <option value="" disabled className="bg-white text-slate-900">
                   {draftExercise.muscleGroupId ? "Seleccionar ejercicio" : "Primero selecciona grupo muscular"}
                 </option>
                 {(exercisesByGroup.get(String(draftExercise.muscleGroupId)) || []).map((exercise) => (
-                  <option key={exercise.id} value={exercise.id}>
+                  <option key={exercise.id} value={exercise.id} className="bg-white text-slate-900">
                     {exercise.name}
                   </option>
                 ))}

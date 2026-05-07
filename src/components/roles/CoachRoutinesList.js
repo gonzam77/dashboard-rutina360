@@ -97,7 +97,11 @@ export default function CoachRoutinesList({ roleId, userId, coachId, routines })
                 Cerrar
               </button>
             </div>
-            <CoachRoutineForm coachId={coachId} isInModal />
+            <CoachRoutineForm
+              coachId={coachId}
+              isInModal
+              onSaved={() => setIsCreateModalOpen(false)}
+            />
           </div>
         </div>
       ) : null}

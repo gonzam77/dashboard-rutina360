@@ -35,7 +35,7 @@ export default function CoachCreateRoutineButton({ coachId }) {
                 Cerrar
               </button>
             </div>
-            <CoachRoutineForm coachId={coachId} isInModal />
+            <CoachRoutineForm coachId={coachId} isInModal onSaved={() => setIsOpen(false)} />
           </div>
         </div>
       ) : null}

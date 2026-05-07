@@ -351,11 +351,11 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
                     <select
                       value={effectiveMuscleGroupId}
                       onChange={(event) => updateExerciseRow(row.rowKey, "muscleGroupId", event.target.value)}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-2"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900"
                     >
-                      <option value="" disabled>Seleccionar grupo muscular</option>
+                      <option value="" disabled className="bg-white text-slate-900">Seleccionar grupo muscular</option>
                       {muscleGroups.map((group) => (
-                        <option key={group.id} value={group.id}>
+                        <option key={group.id} value={group.id} className="bg-white text-slate-900">
                           {group.name}
                         </option>
                       ))}
@@ -365,16 +365,16 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
                       value={row.idEjercice}
                       onChange={(event) => updateExerciseRow(row.rowKey, "idEjercice", event.target.value)}
                       disabled={!effectiveMuscleGroupId}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 disabled:bg-slate-100"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
                     >
-                      <option value="" disabled>
+                      <option value="" disabled className="bg-white text-slate-900">
                         {effectiveMuscleGroupId ? "Seleccionar ejercicio" : "Primero selecciona grupo muscular"}
                       </option>
                       {selectedExercise && !availableExercises.some((exercise) => String(exercise.id) === String(row.idEjercice)) ? (
-                        <option value={selectedExercise.id}>{selectedExercise.name}</option>
+                        <option value={selectedExercise.id} className="bg-white text-slate-900">{selectedExercise.name}</option>
                       ) : null}
                       {availableExercises.map((exercise) => (
-                        <option key={exercise.id} value={exercise.id}>
+                        <option key={exercise.id} value={exercise.id} className="bg-white text-slate-900">
                           {exercise.name}
                         </option>
                       ))}
