@@ -59,8 +59,8 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
     setMessage("");
 
     try {
-      if (isAthleteRole && (!height || !weight || !goal.trim() || !weeklyAvailability)) {
-        setError("Para crear un atleta debes completar altura, peso, objetivo y disponibilidad semanal.");
+      if (isAthleteRole && (!height || !weight || !weeklyAvailability)) {
+        setError("Para crear un atleta debes completar altura, peso y disponibilidad semanal.");
         return;
       }
 
@@ -319,9 +319,8 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
                     className="rounded-lg border border-slate-300 px-3 py-2"
                   />
                   <input
-                    required
                     type="text"
-                    placeholder="Objetivo (texto libre)"
+                    placeholder="Objetivo (opcional)"
                     value={goal}
                     onChange={(event) => setGoal(event.target.value)}
                     className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2"

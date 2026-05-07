@@ -87,6 +87,7 @@ export default async function UserProfilePage({ params, searchParams }) {
   let role = null;
   let user = null;
   let userRoleName = "";
+  let athleteRoleId = null;
   let routines = [];
   let coachRoutines = [];
   let assignedAthletes = [];
@@ -111,6 +112,8 @@ export default async function UserProfilePage({ params, searchParams }) {
     routines = fetchedRoutines;
 
     role = roles.find((item) => String(item?.id) === String(roleId)) || null;
+    const athleteRole = roles.find((item) => isAthleteRoleName(item?.name));
+    athleteRoleId = Number(athleteRole?.id) || null;
     user = users.find((item) => String(item?.id) === String(userId)) || null;
     userRoleName = user?.Rol?.name || role?.name || "";
 
@@ -213,7 +216,7 @@ export default async function UserProfilePage({ params, searchParams }) {
       {!errorMessage && user && isCoachProfile ? (
         <section className="rounded-2xl bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Atletas asignados</h2>
-          <CoachAthleteAssignment coachId={user.id} athletes={availableAthletes} />
+          <CoachAthleteAssignment coachId={user.id} athletes={availableAthletes} athleteRoleId={athleteRoleId} />
           {assignedAthletes.length === 0 ? (
             <p className="mt-3 text-sm text-slate-600">Este coach no tiene atletas asignados.</p>
           ) : (
