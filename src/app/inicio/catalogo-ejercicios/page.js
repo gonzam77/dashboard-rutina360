@@ -1,10 +1,20 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import ExerciseDeleteButton from "@/components/catalog/ExerciseDeleteButton";
+import { parseSessionUserCookie } from "@/lib/session";
 
 const MUSCLE_GROUPS_URL = "https://rutina360-server.onrender.com/muscleGroup";
 const EXERCISES_URL = "https://rutina360-server.onrender.com/ejercice";
 const ROUTINES_URL = "https://rutina360-server.onrender.com/routine/";
+
+function normalizeRoleName(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isGymOrDescendantRole(roleName) {
+  const normalized = normalizeRoleName(roleName);
+  return ["gym", "gimnasio", "coach", "athlete", "atleta"].includes(normalized);
+}
 
 async function fetchJson(url, fallbackMessage, token) {
   const response = await fetch(url, {
@@ -28,9 +38,15 @@ async function createMuscleGroup(formData) {
   const name = String(formData.get("name") || "").trim();
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
+  const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
+  const roleName = sessionUser?.roleName || "";
 
   if (!name) {
     throw new Error("El nombre del grupo muscular es obligatorio.");
+  }
+
+  if (isGymOrDescendantRole(roleName)) {
+    throw new Error("Tu rol no tiene permisos para crear grupos musculares.");
   }
 
   const response = await fetch(`${MUSCLE_GROUPS_URL}/`, {
@@ -58,9 +74,15 @@ async function createExercise(formData) {
   const idMuscleGroup = Number(formData.get("idMuscleGroup"));
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
+  const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
+  const roleName = sessionUser?.roleName || "";
 
   if (!name) {
     throw new Error("El nombre del ejercicio es obligatorio.");
+  }
+
+  if (isGymOrDescendantRole(roleName)) {
+    throw new Error("Tu rol no tiene permisos para crear ejercicios.");
   }
 
   if (!Number.isFinite(idMuscleGroup) || idMuscleGroup <= 0) {
@@ -146,10 +168,14 @@ export default async function CatalogoEjerciciosPage() {
   let errorMessage = "";
   let routineUsageWarning = "";
   let routineUsageVerified = false;
+  let canManageExerciseCatalog = true;
 
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
+    const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
+    const roleName = sessionUser?.roleName || "";
+    canManageExerciseCatalog = !isGymOrDescendantRole(roleName);
     const [muscleGroupsResult, exercisesResult] = await Promise.all([
       fetchJson(MUSCLE_GROUPS_URL, "No se pudieron cargar los grupos musculares.", token),
       fetchJson(EXERCISES_URL, "No se pudieron cargar los ejercicios.", token),
@@ -176,21 +202,23 @@ export default async function CatalogoEjerciciosPage() {
         <p className="mt-3 text-white/80">
           Grupos musculares y ejercicios asociados del sistema.
         </p>
-        <form action={createMuscleGroup} className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <input
-            type="text"
-            name="name"
-            placeholder="Nuevo grupo muscular (ej: Lumbares)"
-            className="w-full rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-sm text-white outline-none ring-cyan-300/35 placeholder:text-white/55 focus:ring"
-            required
-          />
-          <button
-            type="submit"
-            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
-          >
-            Agregar grupo muscular
-          </button>
-        </form>
+        {canManageExerciseCatalog ? (
+          <form action={createMuscleGroup} className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <input
+              type="text"
+              name="name"
+              placeholder="Nuevo grupo muscular (ej: Lumbares)"
+              className="w-full rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-sm text-white outline-none ring-cyan-300/35 placeholder:text-white/55 focus:ring"
+              required
+            />
+            <button
+              type="submit"
+              className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
+            >
+              Agregar grupo muscular
+            </button>
+          </form>
+        ) : null}
       </header>
 
       {errorMessage ? (
@@ -252,34 +280,38 @@ export default async function CatalogoEjerciciosPage() {
                               </p>
                             ) : null}
                           </div>
-                          <ExerciseDeleteButton
-                            exerciseId={exercise.id}
-                            exerciseName={exercise.name}
-                            routineCount={routineCount}
-                            routineUsageVerified={routineUsageVerified}
-                          />
+                          {canManageExerciseCatalog ? (
+                            <ExerciseDeleteButton
+                              exerciseId={exercise.id}
+                              exerciseName={exercise.name}
+                              routineCount={routineCount}
+                              routineUsageVerified={routineUsageVerified}
+                            />
+                          ) : null}
                         </li>
                       );
                     })}
                   </ul>
                 )}
 
-                <form action={createExercise} className="mt-auto pt-4 flex flex-col gap-3 sm:flex-row">
-                  <input type="hidden" name="idMuscleGroup" value={group.id} />
-                  <input
-                    type="text"
-                    name="name"
-                    placeholder="Nuevo ejercicio para este grupo"
-                    className="w-full rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-sm text-white outline-none ring-cyan-300/35 placeholder:text-white/55 focus:ring"
-                    required
-                  />
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
-                  >
-                    Agregar
-                  </button>
-                </form>
+                {canManageExerciseCatalog ? (
+                  <form action={createExercise} className="mt-auto pt-4 flex flex-col gap-3 sm:flex-row">
+                    <input type="hidden" name="idMuscleGroup" value={group.id} />
+                    <input
+                      type="text"
+                      name="name"
+                      placeholder="Nuevo ejercicio para este grupo"
+                      className="w-full rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-sm text-white outline-none ring-cyan-300/35 placeholder:text-white/55 focus:ring"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
+                    >
+                      Agregar
+                    </button>
+                  </form>
+                ) : null}
               </article>
             );
           })}
