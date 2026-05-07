@@ -1,4 +1,7 @@
+ "use client";
+
 import Link from "next/link";
+import { useState } from "react";
 
 const MENU_BY_ROLE = {
   super_admin: [
@@ -28,12 +31,52 @@ const MENU_BY_ROLE = {
 
 export default function SideMenu({ username = "Usuario", role = "Sin rol", roleKey = "unknown" }) {
   const menuItems = MENU_BY_ROLE[roleKey] || MENU_BY_ROLE.unknown;
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <aside className="flex w-full flex-col bg-[#0a233d] text-slate-100 lg:min-h-screen lg:w-72">
+    <>
+    <div className="sticky top-0 z-40 flex items-center justify-between border-b border-white/10 bg-[#0a233d] px-4 py-3 lg:hidden">
+      <div>
+        <p className="text-base font-semibold text-white">Rutina360</p>
+        <p className="text-xs text-white/65">Panel administrativo</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => setIsOpen((value) => !value)}
+        aria-expanded={isOpen}
+        aria-label="Abrir menu"
+        className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-white"
+      >
+        ☰
+      </button>
+    </div>
+
+    {isOpen ? (
+      <div
+        className="fixed inset-0 z-50 bg-[#071a2f]/70 lg:hidden"
+        onClick={() => setIsOpen(false)}
+      />
+    ) : null}
+
+    <aside
+      className={`fixed left-0 top-0 z-50 flex h-screen w-72 flex-col bg-[#0a233d] text-slate-100 transition-transform duration-300 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:translate-x-0 ${
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
       <div className="border-b border-white/10 p-6">
-        <h2 className="text-xl font-semibold">Rutina360</h2>
-        <p className="mt-1 text-sm text-white/65">Panel administrativo</p>
+        <div className="flex items-center justify-between gap-3 lg:block">
+          <div>
+            <h2 className="text-xl font-semibold">Rutina360</h2>
+            <p className="mt-1 text-sm text-white/65">Panel administrativo</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsOpen(false)}
+            className="rounded-lg border border-white/20 px-2 py-1 text-sm text-white/85 lg:hidden"
+          >
+            ✕
+          </button>
+        </div>
         <div className="mt-4 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm">
           <p className="font-medium text-white">{username}</p>
           <p className="text-cyan-100/90">{role}</p>
@@ -45,6 +88,7 @@ export default function SideMenu({ username = "Usuario", role = "Sin rol", roleK
           <Link
             key={item.href}
             href={item.href}
+            onClick={() => setIsOpen(false)}
             className="block rounded-lg border border-transparent px-3 py-2 text-sm font-medium text-white/85 transition hover:border-cyan-300/30 hover:bg-cyan-300/10 hover:text-white"
           >
             {item.label}
@@ -61,5 +105,6 @@ export default function SideMenu({ username = "Usuario", role = "Sin rol", roleK
         </button>
       </form>
     </aside>
+    </>
   );
 }
