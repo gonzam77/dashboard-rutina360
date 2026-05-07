@@ -28,7 +28,12 @@ export function normalizeRoleKey(roleName) {
     return "super_admin";
   }
 
-  if (normalized === "admin" || normalized === "administrador") {
+  if (
+    normalized === "admin" ||
+    normalized === "administrador" ||
+    normalized === "gym" ||
+    normalized === "gimnasio"
+  ) {
     return "admin";
   }
 

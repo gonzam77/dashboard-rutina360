@@ -44,7 +44,7 @@ function requiresAdminOwner(roleName) {
 
 function isAdminRole(roleName) {
   const name = normalizeRoleName(roleName);
-  return name === "admin" || name === "administrador";
+  return name === "admin" || name === "administrador" || name === "gym" || name === "gimnasio";
 }
 
 async function fetchList(url, token) {
@@ -116,7 +116,12 @@ export async function POST(request) {
         const creator = users.find((user) => Number(user?.id) === Number(creatorId));
         const creatorRoleName = normalizeRoleName(creator?.Rol?.name);
 
-        if (creatorRoleName === "administrador" || creatorRoleName === "admin") {
+        if (
+          creatorRoleName === "administrador" ||
+          creatorRoleName === "admin" ||
+          creatorRoleName === "gym" ||
+          creatorRoleName === "gimnasio"
+        ) {
           idAdminOwner = creator?.id;
         } else if (creatorRoleName === "coach") {
           idAdminOwner = creator?.idAdminOwner;
