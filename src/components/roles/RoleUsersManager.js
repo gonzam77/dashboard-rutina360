@@ -23,6 +23,8 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
 
   const isAthleteRole = ["athlete", "atleta"].includes(String(roleName).trim().toLowerCase());
   const isAdminRole = ["admin", "administrador"].includes(String(roleName).trim().toLowerCase());
+  const isGymRole = ["gym", "gimnasio"].includes(String(roleName).trim().toLowerCase());
+  const requiresPersonalData = !isAdminRole && !isGymRole;
 
   function resetCreateForm() {
     setUsername("");
@@ -71,7 +73,7 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
           username,
           email,
           password,
-          ...(!isAdminRole ? { birthDate, gender } : {}),
+          ...(requiresPersonalData ? { birthDate, gender } : {}),
           idRole: Number(roleId),
           ...(isAthleteRole
             ? {
@@ -269,7 +271,7 @@ export default function RoleUsersManager({ roleId, roleName, users }) {
                 onChange={(event) => setEmail(event.target.value)}
                 className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white"
               />
-              {!isAdminRole ? (
+              {requiresPersonalData ? (
                 <>
                   <input
                     required
