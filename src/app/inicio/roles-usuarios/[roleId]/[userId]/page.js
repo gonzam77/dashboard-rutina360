@@ -68,6 +68,10 @@ function isAdminOrGymRoleName(value) {
   );
 }
 
+function isGymRoleName(value) {
+  return ["gym", "gimnasio"].includes(String(value || "").trim().toLowerCase());
+}
+
 function resolveGymOwnerId(candidate) {
   if (!candidate) {
     return null;
@@ -106,6 +110,7 @@ export default async function UserProfilePage({ params, searchParams }) {
   const cameFromRoutineDetail = String(from || "").trim().toLowerCase() === "routine";
   let viewerRoleKey = "unknown";
   let viewerUserId = null;
+  let viewerRoleName = "";
 
   let errorMessage = "";
   let role = null;
@@ -125,6 +130,7 @@ export default async function UserProfilePage({ params, searchParams }) {
     const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
     viewerRoleKey = normalizeRoleKey(sessionUser?.roleName);
     viewerUserId = Number(sessionUser?.id) || null;
+    viewerRoleName = String(sessionUser?.roleName || "").trim().toLowerCase();
 
     // Roles y usuarios son el minimo necesario para renderizar el perfil.
     const [roles, fetchedUsers] = await Promise.all([
@@ -184,12 +190,16 @@ export default async function UserProfilePage({ params, searchParams }) {
 
   const isCoachProfile = userRoleName.trim().toLowerCase() === "coach";
   const isAthleteProfile = isAthleteRoleName(userRoleName);
+  const isViewerGym = isGymRoleName(viewerRoleName);
   const fallbackCoachId = viewerRoleKey === "coach" ? viewerUserId : null;
+  const fallbackGymId = isViewerGym ? viewerUserId : null;
   const effectiveCoachId =
     Number.isFinite(normalizedCoachId) && normalizedCoachId > 0
       ? normalizedCoachId
       : Number.isFinite(fallbackCoachId) && fallbackCoachId > 0
         ? fallbackCoachId
+        : Number.isFinite(fallbackGymId) && fallbackGymId > 0
+          ? fallbackGymId
         : null;
   const shouldShowGender = isCoachProfile || isAthleteProfile;
   const backFallbackHref = effectiveCoachId
