@@ -49,7 +49,7 @@ function buildRoleHome(roleKey, profileHref, roleName) {
       description: "Administra tus atletas y tus rutinas activas.",
       actions: [
         ...(profileHref ? [{ href: profileHref, label: "Ir a mi perfil" }] : []),
-        { href: "/inicio/roles-usuarios/4", label: "Ver y asignar atletas" },
+        { href: profileHref || "/inicio/roles-usuarios", label: "Ver y asignar atletas" },
         { href: "/inicio/rutinas-creadas", label: "Mis rutinas" },
       ],
     };

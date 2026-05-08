@@ -5,7 +5,6 @@ import RoleCreateForm from "@/components/roles/RoleCreateForm";
 
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
 const USERS_URL = "https://rutina360-server.onrender.com/users";
-const USER_LINKS_URL = "https://rutina360-server.onrender.com/users/link";
 
 async function getRoles(token) {
   const response = await fetch(ROLES_URL, {
@@ -39,43 +38,37 @@ async function getUsers(token) {
   return Array.isArray(json?.data) ? json.data : [];
 }
 
-async function getUserLinks(token) {
-  const response = await fetch(USER_LINKS_URL, {
-    cache: "no-store",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-
-  if (!response.ok) {
-    return [];
-  }
-
-  const json = await response.json().catch(() => ({}));
-  return Array.isArray(json?.data) ? json.data : [];
-}
 
 function isAthleteRoleName(value) {
   return ["athlete", "atleta"].includes(String(value || "").trim().toLowerCase());
 }
 
-function filterUsersByViewerRole(users, roleKey, viewerId, userLinks) {
+function filterUsersByViewerRole(users, roleKey, viewerId) {
   if (roleKey === "super_admin") {
     return users;
   }
 
   if (roleKey === "admin") {
-    return users.filter(
-      (user) => Number(user?.id) === Number(viewerId) || Number(user?.idAdminOwner) === Number(viewerId)
-    );
+    return users.filter((user) => {
+      const userId = Number(user?.id);
+      const ownerId = Number(user?.idAdminOwner);
+      const nestedOwnerId = Number(user?.adminOwner?.id);
+
+      return (
+        userId === Number(viewerId) ||
+        ownerId === Number(viewerId) ||
+        nestedOwnerId === Number(viewerId)
+      );
+    });
   }
 
   if (roleKey === "coach") {
-    const assignedAthleteIds = new Set(
-      userLinks
-        .filter((link) => Number(link?.idCoach) === Number(viewerId) && link?.isDeleted !== true)
-        .map((link) => Number(link?.idAthlete))
-    );
+    const viewerUser = users.find((user) => Number(user?.id) === Number(viewerId)) || null;
+    const viewerGymOwnerId =
+      Number(viewerUser?.idAdminOwner) || Number(viewerUser?.adminOwner?.id) || null;
+    if (!viewerGymOwnerId) {
+      return users.filter((user) => Number(user?.id) === Number(viewerId));
+    }
 
     return users.filter((user) => {
       if (Number(user?.id) === Number(viewerId)) {
@@ -83,7 +76,14 @@ function filterUsersByViewerRole(users, roleKey, viewerId, userLinks) {
       }
 
       const roleName = user?.Rol?.name || "";
-      return isAthleteRoleName(roleName) && assignedAthleteIds.has(Number(user?.id));
+      if (!isAthleteRoleName(roleName)) {
+        return false;
+      }
+
+      return (
+        Number(user?.idAdminOwner) === Number(viewerGymOwnerId) ||
+        Number(user?.adminOwner?.id) === Number(viewerGymOwnerId)
+      );
     });
   }
 
@@ -108,28 +108,6 @@ function buildRoleTree(roles) {
 
   const roots = childrenByParent.get(null) || [];
   return { childrenByParent, roots };
-}
-
-function collectDescendantRoleIds(parentRoleId, childrenByParent) {
-  const collected = new Set();
-  const stack = [...(childrenByParent.get(Number(parentRoleId)) || [])];
-
-  while (stack.length > 0) {
-    const current = stack.pop();
-    const currentId = Number(current?.id);
-
-    if (!Number.isFinite(currentId) || collected.has(currentId)) {
-      continue;
-    }
-
-    collected.add(currentId);
-    const children = childrenByParent.get(currentId) || [];
-    for (const child of children) {
-      stack.push(child);
-    }
-  }
-
-  return collected;
 }
 
 function countUsersInSubtree(roleId, usersByRoleId, childrenByParent) {
@@ -218,21 +196,18 @@ export default async function RolesUsuariosPage() {
   let usersByRoleId = new Map();
   let allRoles = [];
   let canCreateRoles = false;
-  let viewerRoleName = "";
 
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
     const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
     const roleKey = normalizeRoleKey(sessionUser?.roleName);
-    viewerRoleName = String(sessionUser?.roleName || "").trim().toLowerCase();
     const viewerId = Number(sessionUser?.id) || null;
-    const viewerRoleId = Number(sessionUser?.idRole) || null;
     canCreateRoles = roleKey === "super_admin" && viewerId === 1;
 
-    const [roles, users, userLinks] = await Promise.all([getRoles(token), getUsers(token), getUserLinks(token)]);
+    const [roles, users] = await Promise.all([getRoles(token), getUsers(token)]);
     allRoles = roles;
-    const filteredUsers = filterUsersByViewerRole(users, roleKey, viewerId, userLinks);
+    const filteredUsers = filterUsersByViewerRole(users, roleKey, viewerId);
 
     const tree = buildRoleTree(roles);
     roots = tree.roots;
@@ -262,8 +237,7 @@ export default async function RolesUsuariosPage() {
       });
     }
 
-    const isGymViewer = viewerRoleName === "gym" || viewerRoleName === "gimnasio";
-    if (isGymViewer) {
+    if (roleKey === "admin") {
       const gymVisibleRoles = allRoles.filter((role) => {
         const roleName = String(role?.name || "").trim().toLowerCase();
         return roleName === "coach" || roleName === "athlete" || roleName === "atleta";
@@ -277,18 +251,6 @@ export default async function RolesUsuariosPage() {
         [...childrenByParent.entries()].map(([parentId, children]) => [
           parentId,
           children.filter((child) => allowedIds.has(Number(child?.id))),
-        ])
-      );
-    }
-
-    const isAdminViewer = viewerRoleName === "admin" || viewerRoleName === "administrador";
-    if (isAdminViewer && Number.isFinite(viewerRoleId) && viewerRoleId > 0) {
-      const visibleRoleIds = collectDescendantRoleIds(viewerRoleId, childrenByParent);
-      roots = (childrenByParent.get(viewerRoleId) || []).filter((role) => visibleRoleIds.has(Number(role?.id)));
-      childrenByParent = new Map(
-        [...childrenByParent.entries()].map(([parentId, children]) => [
-          parentId,
-          children.filter((child) => visibleRoleIds.has(Number(child?.id))),
         ])
       );
     }

@@ -277,7 +277,7 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
             placeholder="Nombre de la rutina"
             value={routineName}
             onChange={(event) => setRoutineName(event.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2"
+            className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2 text-black"
           />
           <input
             required
@@ -286,7 +286,7 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
             placeholder="Orden"
             value={routineOrder}
             onChange={(event) => setRoutineOrder(event.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-black"
           />
           <input
             required
@@ -295,7 +295,7 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
             placeholder="Tiempo (minutos)"
             value={routineTime}
             onChange={(event) => setRoutineTime(event.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-black"
           />
         </div>
 
@@ -386,7 +386,7 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
                       placeholder="Cantidad de series"
                       value={row.series}
                       onChange={(event) => updateExerciseRow(row.rowKey, "series", event.target.value)}
-                      className="rounded-lg border border-slate-300 px-3 py-2"
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-black"
                     />
 
                     <input
@@ -395,7 +395,7 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
                       placeholder="Descanso entre series (min)"
                       value={row.rest}
                       onChange={(event) => updateExerciseRow(row.rowKey, "rest", event.target.value)}
-                      className="rounded-lg border border-slate-300 px-3 py-2"
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-black"
                     />
 
                     <input
@@ -403,7 +403,7 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
                       placeholder="Comentario (opcional)"
                       value={row.comments}
                       onChange={(event) => updateExerciseRow(row.rowKey, "comments", event.target.value)}
-                      className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2"
+                      className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2 text-black"
                     />
                   </div>
                 </article>

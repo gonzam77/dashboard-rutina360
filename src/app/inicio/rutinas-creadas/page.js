@@ -81,6 +81,37 @@ function getAthleteLabel(assignment) {
   return "Usuario sin dato";
 }
 
+function isAdminOrGymRoleName(value) {
+  return ["admin", "administrador", "gym", "gimnasio"].includes(
+    String(value || "").trim().toLowerCase()
+  );
+}
+
+function resolveGymOwnerId(candidate) {
+  if (!candidate) {
+    return null;
+  }
+
+  const roleName =
+    candidate?.Rol?.name ||
+    candidate?.role?.name ||
+    candidate?.Role?.name ||
+    candidate?.rol?.name ||
+    "";
+  if (isAdminOrGymRoleName(roleName)) {
+    const ownId = Number(candidate?.id);
+    return Number.isFinite(ownId) && ownId > 0 ? ownId : null;
+  }
+
+  const ownerId = Number(candidate?.idAdminOwner);
+  if (Number.isFinite(ownerId) && ownerId > 0) {
+    return ownerId;
+  }
+
+  const nestedOwnerId = Number(candidate?.adminOwner?.id);
+  return Number.isFinite(nestedOwnerId) && nestedOwnerId > 0 ? nestedOwnerId : null;
+}
+
 function filterDataByViewerRole(routines, users, assignments, roleKey, viewerId) {
   if (roleKey === "super_admin") {
     return { routines, users, assignments };
@@ -99,12 +130,54 @@ function filterDataByViewerRole(routines, users, assignments, roleKey, viewerId)
   }
 
   if (roleKey === "admin") {
-    const gymUsers = users.filter(
-      (user) => Number(user?.id) === Number(viewerId) || Number(user?.idAdminOwner) === Number(viewerId)
-    );
-    const gymUserIds = new Set(gymUsers.map((user) => String(user?.id)));
-    const gymRoutines = routines.filter((routine) => gymUserIds.has(String(routine?.idUser)));
+    const userById = new Map(users.map((user) => [String(user?.id), user]));
+    const gymRoutines = routines.filter((routine) => {
+      const ownerId = Number(routine?.idUser);
+      if (!Number.isFinite(ownerId) || ownerId <= 0) {
+        return false;
+      }
+
+      if (ownerId === Number(viewerId)) {
+        return true;
+      }
+
+      // Fallback: algunos payloads no incluyen todos los usuarios del gym.
+      const ownerFromUsers = userById.get(String(ownerId));
+      if (resolveGymOwnerId(ownerFromUsers) === Number(viewerId)) {
+        return true;
+      }
+
+      const ownerFromRoutine =
+        routine?.creator ||
+        routine?.Creator ||
+        routine?.User ||
+        routine?.user ||
+        routine?.Owner ||
+        routine?.owner ||
+        routine?.Coach ||
+        routine?.coach ||
+        null;
+
+      return resolveGymOwnerId(ownerFromRoutine) === Number(viewerId);
+    });
     const gymRoutineIds = new Set(gymRoutines.map((routine) => String(routine?.id)));
+    const gymRoutineOwnerIds = new Set(gymRoutines.map((routine) => String(routine?.idUser)));
+    const gymUsers = users.filter((user) => {
+      const userId = Number(user?.id);
+      if (!Number.isFinite(userId) || userId <= 0) {
+        return false;
+      }
+
+      if (userId === Number(viewerId)) {
+        return true;
+      }
+
+      if (gymRoutineOwnerIds.has(String(userId))) {
+        return true;
+      }
+
+      return resolveGymOwnerId(user) === Number(viewerId);
+    });
     const gymAssignments = assignments.filter((assignment) => {
       const routineId = assignment?.idRoutine || assignment?.Routine?.id;
       return gymRoutineIds.has(String(routineId));
@@ -155,7 +228,15 @@ function buildRoutineRows(routines, assignments, users) {
   return Array.from(routinesById.values())
     .map((routine) => {
       const routineId = String(routine.id);
-      const creator = usersById.get(String(routine?.idUser));
+      const creator =
+        usersById.get(String(routine?.idUser)) ||
+        routine?.creator ||
+        routine?.Creator ||
+        routine?.User ||
+        routine?.user ||
+        routine?.Coach ||
+        routine?.coach ||
+        null;
       const athleteIds = assignmentAthletesByRoutineId.get(routineId) || new Set();
       const athleteNames = Array.from((assignmentNamesByRoutineId.get(routineId) || new Map()).values());
 

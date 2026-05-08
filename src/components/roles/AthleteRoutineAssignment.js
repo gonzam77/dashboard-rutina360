@@ -77,11 +77,11 @@ export default function AthleteRoutineAssignment({ athleteId, coachId, coachRout
       <h2 className="text-lg font-semibold text-white">Gestion de rutina del atleta</h2>
 
       {coachRoutines.length === 0 ? (
-        <p className="mt-3 text-sm text-white/75">Este coach no tiene rutinas para asignar.</p>
+        <p className="mt-3 text-sm text-white/75">No hay rutinas disponibles del coach o del gimnasio para asignar.</p>
       ) : (
         <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={handleAssignRoutine}>
           <label className="flex min-w-[260px] flex-col text-sm text-white/85">
-            Rutina del coach
+            Rutina disponible (coach/gym)
             <select
               required
               value={selectedRoutineId}

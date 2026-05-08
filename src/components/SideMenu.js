@@ -18,7 +18,7 @@ const MENU_BY_ROLE = {
   ],
   coach: [
     { href: "/inicio", label: "Mi panel" },
-    { href: "/inicio/roles-usuarios/4", label: "Mis atletas" },
+    { href: "/inicio/roles-usuarios", label: "Mis atletas" },
     { href: "/inicio/rutinas-creadas", label: "Mis rutinas" },
   ],
   unknown: [
@@ -29,7 +29,13 @@ const MENU_BY_ROLE = {
   ],
 };
 
-export default function SideMenu({ username = "Usuario", role = "Sin rol", roleKey = "unknown" }) {
+export default function SideMenu({
+  username = "Usuario",
+  role = "Sin rol",
+  roleKey = "unknown",
+  ownRoleId = null,
+  ownUserId = null,
+}) {
   const normalizedRoleName = String(role || "").trim().toLowerCase();
   const isGymRole = normalizedRoleName === "gym" || normalizedRoleName === "gimnasio";
   const menuItems =
@@ -39,6 +45,19 @@ export default function SideMenu({ username = "Usuario", role = "Sin rol", roleK
           { href: "/inicio/roles-usuarios", label: "Roles y usuarios" },
         ]
       : MENU_BY_ROLE[roleKey] || MENU_BY_ROLE.unknown;
+  const coachProfileHref =
+    Number.isFinite(Number(ownRoleId)) &&
+    Number(ownRoleId) > 0 &&
+    Number.isFinite(Number(ownUserId)) &&
+    Number(ownUserId) > 0
+      ? `/inicio/roles-usuarios/${Number(ownRoleId)}/${Number(ownUserId)}`
+      : "/inicio/roles-usuarios";
+  const effectiveMenuItems =
+    roleKey === "coach"
+      ? menuItems.map((item) =>
+          item.label === "Mis atletas" ? { ...item, href: coachProfileHref } : item
+        )
+      : menuItems;
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -92,7 +111,7 @@ export default function SideMenu({ username = "Usuario", role = "Sin rol", roleK
       </div>
 
       <nav className="flex-1 space-y-2 p-4">
-        {menuItems.map((item) => (
+        {effectiveMenuItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}

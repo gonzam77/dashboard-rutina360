@@ -101,6 +101,8 @@ export default async function InicioLayout({ children }) {
   const role =
     firstNonEmptyString([sessionUser?.roleName, currentUser?.Rol?.name, resolveRoleLabel(payload)]) || "Sin rol";
   const roleKey = normalizeRoleKey(role);
+  const ownRoleId = Number(sessionUser?.idRole) || Number(currentUser?.idRole) || Number(currentUser?.Rol?.id) || null;
+  const ownUserId = Number(sessionUser?.id) || Number(currentUser?.id) || userId || null;
 
   if (roleKey === "athlete") {
     redirect("/sin-acceso");
@@ -108,7 +110,7 @@ export default async function InicioLayout({ children }) {
 
   return (
     <div className="min-h-screen bg-[var(--azul-profundo)] lg:flex">
-      <SideMenu username={username} role={role} roleKey={roleKey} />
+      <SideMenu username={username} role={role} roleKey={roleKey} ownRoleId={ownRoleId} ownUserId={ownUserId} />
       <main className="flex-1 bg-[radial-gradient(circle_at_top_right,rgba(68,213,255,0.08),transparent_45%),var(--azul-profundo)] p-6 lg:p-8">
         {children}
       </main>

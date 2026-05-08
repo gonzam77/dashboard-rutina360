@@ -5,7 +5,6 @@ import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
 const USERS_URL = "https://rutina360-server.onrender.com/users";
-const USER_LINKS_URL = "https://rutina360-server.onrender.com/users/link";
 
 async function getRoleById(roleId, token) {
   const response = await fetch(ROLES_URL, {
@@ -66,21 +65,6 @@ async function getUserById(userId, token) {
   return users.find((user) => Number(user?.id) === Number(userId)) || null;
 }
 
-async function fetchUserLinks(token) {
-  const response = await fetch(USER_LINKS_URL, {
-    cache: "no-store",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-
-  if (!response.ok) {
-    return [];
-  }
-
-  const json = await response.json().catch(() => ({}));
-  return Array.isArray(json?.data) ? json.data : [];
-}
 
 function isAthleteRoleName(value) {
   return ["athlete", "atleta"].includes(String(value || "").trim().toLowerCase());
@@ -90,7 +74,7 @@ function isCoachRoleName(value) {
   return String(value || "").trim().toLowerCase() === "coach";
 }
 
-function filterUsersByViewerRole(users, roleName, roleKey, viewerId, viewerAdminOwnerId, userLinks) {
+function filterUsersByViewerRole(users, roleName, roleKey, viewerId, viewerAdminOwnerId) {
   if (roleKey === "super_admin") {
     return users;
   }
@@ -102,7 +86,10 @@ function filterUsersByViewerRole(users, roleName, roleKey, viewerId, viewerAdmin
         return false;
       }
 
-      return Number(user?.idAdminOwner) === Number(viewerId);
+      return (
+        Number(user?.idAdminOwner) === Number(viewerId) ||
+        Number(user?.adminOwner?.id) === Number(viewerId)
+      );
     });
   }
 
@@ -115,16 +102,10 @@ function filterUsersByViewerRole(users, roleName, roleKey, viewerId, viewerAdmin
       return [];
     }
 
-    const assignedAthleteIds = new Set(
-      userLinks
-        .filter((link) => Number(link?.idCoach) === Number(viewerId) && link?.isDeleted !== true)
-        .map((link) => String(link?.idAthlete))
-    );
-
     return users.filter(
       (user) =>
-        Number(user?.idAdminOwner) === Number(viewerAdminOwnerId) &&
-        assignedAthleteIds.has(String(user?.id))
+        Number(user?.idAdminOwner) === Number(viewerAdminOwnerId) ||
+        Number(user?.adminOwner?.id) === Number(viewerAdminOwnerId)
     );
   }
 
@@ -149,12 +130,11 @@ export default async function RolUsuariosDetallePage({ params }) {
     roleKey = normalizeRoleKey(sessionUser?.roleName);
     const viewerId = Number(sessionUser?.id) || null;
 
-    const [roleResult, usersResult, allUsers, fetchedViewerUser, userLinks] = await Promise.all([
+    const [roleResult, usersResult, allUsers, fetchedViewerUser] = await Promise.all([
       getRoleById(roleId, token),
       getUsers(roleId, token),
       fetchUsersFrom(USERS_URL, token),
       getUserById(viewerId, token),
-      fetchUserLinks(token),
     ]);
     role = roleResult;
     viewerUser = fetchedViewerUser;
@@ -173,7 +153,6 @@ export default async function RolUsuariosDetallePage({ params }) {
       roleKey,
       viewerId,
       viewerAdminOwnerId,
-      userLinks
     );
 
     if (roleKey === "super_admin") {

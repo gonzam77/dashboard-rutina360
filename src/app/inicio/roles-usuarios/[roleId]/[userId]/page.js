@@ -5,6 +5,7 @@ import AthleteRoutineAssignment from "@/components/roles/AthleteRoutineAssignmen
 import AthleteAssignedRoutinesList from "@/components/roles/AthleteAssignedRoutinesList";
 import CoachAthleteAssignment from "@/components/roles/CoachAthleteAssignment";
 import BackNavButton from "@/components/BackNavButton";
+import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
 const USERS_URL = "https://rutina360-server.onrender.com/users";
@@ -103,6 +104,8 @@ export default async function UserProfilePage({ params, searchParams }) {
   const { coachId, from } = await searchParams;
   const normalizedCoachId = Number(coachId);
   const cameFromRoutineDetail = String(from || "").trim().toLowerCase() === "routine";
+  let viewerRoleKey = "unknown";
+  let viewerUserId = null;
 
   let errorMessage = "";
   let role = null;
@@ -119,6 +122,9 @@ export default async function UserProfilePage({ params, searchParams }) {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
+    const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
+    viewerRoleKey = normalizeRoleKey(sessionUser?.roleName);
+    viewerUserId = Number(sessionUser?.id) || null;
 
     // Roles y usuarios son el minimo necesario para renderizar el perfil.
     const [roles, fetchedUsers] = await Promise.all([
@@ -178,30 +184,45 @@ export default async function UserProfilePage({ params, searchParams }) {
 
   const isCoachProfile = userRoleName.trim().toLowerCase() === "coach";
   const isAthleteProfile = isAthleteRoleName(userRoleName);
+  const fallbackCoachId = viewerRoleKey === "coach" ? viewerUserId : null;
+  const effectiveCoachId =
+    Number.isFinite(normalizedCoachId) && normalizedCoachId > 0
+      ? normalizedCoachId
+      : Number.isFinite(fallbackCoachId) && fallbackCoachId > 0
+        ? fallbackCoachId
+        : null;
   const shouldShowGender = isCoachProfile || isAthleteProfile;
-  const backFallbackHref = normalizedCoachId
-    ? `/inicio/roles-usuarios/${roleId}/${normalizedCoachId}`
+  const backFallbackHref = effectiveCoachId
+    ? `/inicio/roles-usuarios/${roleId}/${effectiveCoachId}`
     : `/inicio/roles-usuarios/${roleId}`;
-  const selectedCoachUser = normalizedCoachId
-    ? users.find((item) => Number(item?.id) === Number(normalizedCoachId)) || null
+  const selectedCoachUser = effectiveCoachId
+    ? users.find((item) => Number(item?.id) === Number(effectiveCoachId)) || null
     : null;
+  const athleteGymOwnerId = Number(user?.idAdminOwner) || Number(user?.adminOwner?.id) || null;
   const selectedCoachGymOwnerId = resolveGymOwnerId(selectedCoachUser);
+  const targetGymOwnerId = selectedCoachGymOwnerId || athleteGymOwnerId || null;
   const coachRoutinesWithinGym =
-    normalizedCoachId && selectedCoachGymOwnerId
+    effectiveCoachId && targetGymOwnerId
       ? routines.filter((routine) => {
           const routineOwnerId = Number(routine?.idUser);
           if (!Number.isFinite(routineOwnerId) || routineOwnerId <= 0) {
             return false;
           }
 
-          if (routineOwnerId === Number(normalizedCoachId)) {
+          if (routineOwnerId === Number(effectiveCoachId)) {
+            return true;
+          }
+
+          // Fallback: incluir rutinas creadas directamente por el gym owner
+          // aunque ese usuario no venga en el listado parcial de /users.
+          if (routineOwnerId === Number(targetGymOwnerId)) {
             return true;
           }
 
           const ownerUser = users.find((item) => Number(item?.id) === routineOwnerId);
-          return resolveGymOwnerId(ownerUser) === selectedCoachGymOwnerId;
+          return resolveGymOwnerId(ownerUser) === targetGymOwnerId;
         })
-      : routines.filter((routine) => String(routine?.idUser) === String(normalizedCoachId));
+      : routines.filter((routine) => String(routine?.idUser) === String(effectiveCoachId));
 
   return (
     <section className="space-y-6 text-slate-100">
@@ -301,10 +322,10 @@ export default async function UserProfilePage({ params, searchParams }) {
         </section>
       ) : null}
 
-      {!errorMessage && user && isAthleteProfile && normalizedCoachId ? (
+      {!errorMessage && user && isAthleteProfile && effectiveCoachId ? (
         <AthleteRoutineAssignment
           athleteId={user.id}
-          coachId={normalizedCoachId}
+          coachId={effectiveCoachId}
           coachRoutines={coachRoutinesWithinGym}
         />
       ) : null}
@@ -315,7 +336,7 @@ export default async function UserProfilePage({ params, searchParams }) {
           <AthleteAssignedRoutinesList
             roleId={roleId}
             athleteId={user.id}
-            coachId={normalizedCoachId || ""}
+            coachId={effectiveCoachId || ""}
             assignments={athleteAssignedRoutines}
           />
         </section>

@@ -28,6 +28,26 @@ export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKe
   const requiresPersonalData = !isAdminRole && !isGymRole;
   const requiresGymOwnerSelection = viewerRoleKey === "super_admin" && (isAthleteRole || isCoachRole);
   const [selectedGymOwnerId, setSelectedGymOwnerId] = useState("");
+  const gymOwnersById = new Map(
+    gymOwners.map((owner) => [String(owner?.id), owner?.username || owner?.email || `Gym #${owner?.id}`])
+  );
+
+  function getCoachGymLabel(user) {
+    if (user?.adminOwner?.username) {
+      return user.adminOwner.username;
+    }
+
+    if (user?.adminOwner?.email) {
+      return user.adminOwner.email;
+    }
+
+    const ownerId = Number(user?.idAdminOwner);
+    if (Number.isFinite(ownerId) && ownerId > 0) {
+      return gymOwnersById.get(String(ownerId)) || `Gym #${ownerId}`;
+    }
+
+    return "Sin gym";
+  }
 
   function resetCreateForm() {
     setUsername("");
@@ -202,6 +222,9 @@ export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKe
               </div>
 
               <p className="mt-2 text-sm text-white/75">{user.email || "Sin email"}</p>
+              {isCoachRole || isAthleteRole ? (
+                <p className="mt-1 text-sm text-white/75">Gym: {getCoachGymLabel(user)}</p>
+              ) : null}
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link
