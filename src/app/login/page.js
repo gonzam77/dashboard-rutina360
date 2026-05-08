@@ -46,10 +46,7 @@ export default function LoginPage() {
       <div className="pointer-events-none absolute -bottom-20 right-0 h-72 w-72 rounded-full bg-sky-400/20 blur-3xl" />
 
       <section className="relative w-full max-w-md rounded-3xl border border-white/15 bg-[#17385a]/90 p-8 text-white shadow-[0_18px_45px_rgba(0,0,0,0.35)] backdrop-blur">
-        <h1 className="text-2xl font-semibold text-white">Ingreso administrativo</h1>
-        <p className="mt-2 text-sm text-white/75">
-          Inicia sesion para acceder al dashboard.
-        </p>
+        <h1 className="text-2xl text-center font-semibold text-white">Rutina 360</h1>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <div>
