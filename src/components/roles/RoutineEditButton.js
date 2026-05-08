@@ -23,7 +23,6 @@ export default function RoutineEditButton({
       {isOpen ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/50 p-4"
-          onClick={closeModal}
         >
           <div
             role="dialog"

@@ -47,20 +47,20 @@ function isActiveAssignment(assignment) {
   return assignment?.isDeleted !== true && assignment?.isActive !== false;
 }
 
-function getCoachLabel(coach, coachId) {
-  if (coach?.username) {
-    return coach.username;
+function getCreatorLabel(creator, creatorId) {
+  if (creator?.username) {
+    return creator.username;
   }
 
-  if (coach?.email) {
-    return coach.email;
+  if (creator?.email) {
+    return creator.email;
   }
 
-  if (coachId) {
-    return `Coach #${coachId}`;
+  if (creatorId) {
+    return `Usuario #${creatorId}`;
   }
 
-  return "Sin coach";
+  return "Sin creador";
 }
 
 function getAthleteLabel(assignment) {
@@ -155,24 +155,24 @@ function buildRoutineRows(routines, assignments, users) {
   return Array.from(routinesById.values())
     .map((routine) => {
       const routineId = String(routine.id);
-      const coach = usersById.get(String(routine?.idUser));
+      const creator = usersById.get(String(routine?.idUser));
       const athleteIds = assignmentAthletesByRoutineId.get(routineId) || new Set();
       const athleteNames = Array.from((assignmentNamesByRoutineId.get(routineId) || new Map()).values());
 
       return {
         routine,
-        coach,
-        coachLabel: getCoachLabel(coach, routine?.idUser),
+        creator,
+        creatorLabel: getCreatorLabel(creator, routine?.idUser),
         assignedCount: athleteIds.size,
         athleteNames,
         exerciseCount: getRoutineExercises(routine).length,
       };
     })
     .sort((a, b) => {
-      const coachCompare = a.coachLabel.localeCompare(b.coachLabel, "es");
+      const creatorCompare = a.creatorLabel.localeCompare(b.creatorLabel, "es");
 
-      if (coachCompare !== 0) {
-        return coachCompare;
+      if (creatorCompare !== 0) {
+        return creatorCompare;
       }
 
       return String(a.routine?.name || "").localeCompare(String(b.routine?.name || ""), "es");
@@ -215,7 +215,7 @@ export default async function RutinasCreadasPage() {
             <h1 className="text-3xl font-extrabold text-white">Rutinas creadas</h1>
             <p className="mt-3 text-white/80">Listado de rutinas visibles segun tu perfil, coach propietario y asignaciones.</p>
           </div>
-          {roleKey === "coach" && viewerId ? <CoachCreateRoutineButton coachId={viewerId} /> : null}
+          {(roleKey === "coach" || roleKey === "admin") && viewerId ? <CoachCreateRoutineButton coachId={viewerId} /> : null}
         </div>
       </header>
 
@@ -251,7 +251,7 @@ export default async function RutinasCreadasPage() {
               <thead>
                 <tr className="text-xs uppercase tracking-wide text-white/60">
                   <th className="px-3 py-3 font-semibold">Rutina</th>
-                  <th className="px-3 py-3 font-semibold">Coach</th>
+                  <th className="px-3 py-3 font-semibold">Creador</th>
                   <th className="px-3 py-3 font-semibold">Usuarios asignados</th>
                   <th className="px-3 py-3 font-semibold">Ejercicios</th>
                   <th className="px-3 py-3 font-semibold">Detalle</th>
@@ -260,7 +260,7 @@ export default async function RutinasCreadasPage() {
               <tbody className="divide-y divide-white/10 text-white/85">
                 {rows.map((row) => {
                   const routine = row.routine;
-                  const coachRoleId = row.coach?.idRole || row.coach?.Rol?.id;
+                  const creatorRoleId = row.creator?.idRole || row.creator?.Rol?.id;
 
                   return (
                     <tr key={routine.id} className="align-top">
@@ -270,8 +270,8 @@ export default async function RutinasCreadasPage() {
                         <p className="mt-1 text-xs text-white/60">Orden {routine?.order || "-"} - {routine?.time || "-"} min</p>
                       </td>
                       <td className="px-3 py-4">
-                        <p className="font-medium text-white">{row.coachLabel}</p>
-                        <p className="mt-1 text-xs text-white/60">{row.coach?.email || `ID ${routine?.idUser || "-"}`}</p>
+                        <p className="font-medium text-white">{row.creatorLabel}</p>
+                        <p className="mt-1 text-xs text-white/60">{row.creator?.email || `ID ${routine?.idUser || "-"}`}</p>
                       </td>
                       <td className="px-3 py-4">
                         <span className="inline-flex rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100">
@@ -286,9 +286,9 @@ export default async function RutinasCreadasPage() {
                       </td>
                       <td className="px-3 py-4">{row.exerciseCount}</td>
                       <td className="px-3 py-4">
-                        {routine?.id && row.coach?.id && coachRoleId ? (
+                        {routine?.id && row.creator?.id && creatorRoleId ? (
                           <Link
-                            href={`/inicio/roles-usuarios/${coachRoleId}/${row.coach.id}/rutinas/${routine.id}`}
+                            href={`/inicio/roles-usuarios/${creatorRoleId}/${row.creator.id}/rutinas/${routine.id}`}
                             className="inline-block rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
                           >
                             Ver rutina

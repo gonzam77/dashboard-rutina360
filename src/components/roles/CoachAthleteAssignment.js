@@ -179,7 +179,6 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
       {isAssignModalOpen ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#071a2f]/70 p-4"
-          onClick={() => setIsAssignModalOpen(false)}
         >
           <div
             className="w-full max-w-xl rounded-2xl border border-white/15 bg-[#0f2a46] p-6 shadow-xl"
@@ -233,7 +232,6 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
       {isCreateModalOpen ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#071a2f]/70 p-4"
-          onClick={() => setIsCreateModalOpen(false)}
         >
           <div
             className="w-full max-w-xl rounded-2xl border border-white/15 bg-[#0f2a46] p-6 shadow-xl"

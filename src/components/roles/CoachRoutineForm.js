@@ -173,7 +173,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
           placeholder="Nombre de la rutina"
           value={routineName}
           onChange={(event) => setRoutineName(event.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2"
+          className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2 text-black"
         />
         <input
           required
@@ -182,7 +182,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
           placeholder="Orden"
           value={routineOrder}
           onChange={(event) => setRoutineOrder(event.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-black"
         />
         <input
           required
@@ -191,7 +191,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
           placeholder="Tiempo (minutos)"
           value={routineTime}
           onChange={(event) => setRoutineTime(event.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-black"
         />
         <div className="md:col-span-2">
           <p className="mb-2 text-sm font-medium text-slate-800">Agregar ejercicios (uno por uno)</p>
@@ -200,7 +200,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
               <select
                 value={draftExercise.muscleGroupId}
                 onChange={(event) => updateDraftExercise("muscleGroupId", event.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 text-black"
               >
                 <option value="" disabled className="bg-white text-slate-900">Seleccionar grupo muscular</option>
                 {muscleGroups.map((group) => (
@@ -232,7 +232,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
                 placeholder="Cantidad de series"
                 value={draftExercise.series}
                 onChange={(event) => updateDraftExercise("series", event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-black"
               />
 
               <input
@@ -241,7 +241,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
                 placeholder="Descanso entre series (min)"
                 value={draftExercise.rest}
                 onChange={(event) => updateDraftExercise("rest", event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-black"
               />
 
             </div>
@@ -251,7 +251,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
                 placeholder="Comentario (opcional)"
                 value={draftExercise.comments}
                 onChange={(event) => updateDraftExercise("comments", event.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-black"
               />
               <button
                 type="button"

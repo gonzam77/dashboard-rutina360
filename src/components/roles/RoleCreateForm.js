@@ -78,7 +78,6 @@ export default function RoleCreateForm({ roles }) {
       {isOpen ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-[#071a2f]/70 p-4"
-          onClick={() => !loading && setIsOpen(false)}
         >
           <div
             className="w-full max-w-2xl rounded-2xl border border-white/15 bg-[#0f2a46] p-6 shadow-xl"

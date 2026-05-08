@@ -237,7 +237,6 @@ export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKe
       {isCreateModalOpen ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#071a2f]/70 p-4"
-          onClick={closeCreateModal}
         >
           <div
             role="dialog"
