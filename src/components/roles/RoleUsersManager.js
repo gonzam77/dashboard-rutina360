@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKey = "unknown", gymOwners = [] }) {
+export default function RoleUsersManager({
+  roleId,
+  roleName,
+  users,
+  viewerRoleKey = "unknown",
+  gymOwners = [],
+  athleteCoachLabelsByUserId = {},
+}) {
   const router = useRouter();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [dni, setDni] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,12 +28,16 @@ export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKe
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const isAthleteRole = ["athlete", "atleta"].includes(String(roleName).trim().toLowerCase());
   const isCoachRole = String(roleName).trim().toLowerCase() === "coach";
   const isAdminRole = ["admin", "administrador"].includes(String(roleName).trim().toLowerCase());
   const isGymRole = ["gym", "gimnasio"].includes(String(roleName).trim().toLowerCase());
   const requiresPersonalData = !isAdminRole && !isGymRole;
+  const requiresDni = isAthleteRole || isCoachRole;
+  const shouldShowUserFilters = isAthleteRole || isCoachRole;
   const requiresGymOwnerSelection = viewerRoleKey === "super_admin" && (isAthleteRole || isCoachRole);
   const [selectedGymOwnerId, setSelectedGymOwnerId] = useState("");
   const gymOwnersById = new Map(
@@ -50,6 +62,7 @@ export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKe
   }
 
   function resetCreateForm() {
+    setDni("");
     setUsername("");
     setEmail("");
     setPassword("");
@@ -90,6 +103,11 @@ export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKe
         return;
       }
 
+      if (requiresDni && !dni.trim()) {
+        setError("El DNI es obligatorio para atletas y coaches.");
+        return;
+      }
+
       if (requiresGymOwnerSelection && (!selectedGymOwnerId || Number(selectedGymOwnerId) <= 0)) {
         setError("Debes seleccionar el gimnasio al que pertenece este usuario.");
         return;
@@ -99,6 +117,7 @@ export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKe
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(dni.trim() ? { dni: dni.trim() } : {}),
           username,
           email,
           password,
@@ -175,6 +194,40 @@ export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKe
     return { label: "Activo", className: "border border-cyan-300/35 bg-cyan-300/10 text-cyan-100" };
   }
 
+  const filteredUsers = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    return users.filter((user) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        String(user?.username || "").toLowerCase().includes(normalizedSearch) ||
+        String(user?.dni || "").toLowerCase().includes(normalizedSearch) ||
+        String(user?.email || "").toLowerCase().includes(normalizedSearch);
+
+      if (!matchesSearch) {
+        return false;
+      }
+
+      if (statusFilter === "all") {
+        return true;
+      }
+
+      if (statusFilter === "active") {
+        return user?.isDeleted !== true && user?.isActive !== false;
+      }
+
+      if (statusFilter === "inactive") {
+        return user?.isDeleted !== true && user?.isActive === false;
+      }
+
+      if (statusFilter === "deleted") {
+        return user?.isDeleted === true;
+      }
+
+      return true;
+    });
+  }, [searchTerm, statusFilter, users]);
+
   return (
     <div className="space-y-6">
       <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
@@ -182,8 +235,15 @@ export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKe
           <div>
             <h2 className="text-lg font-semibold text-white">Usuarios registrados</h2>
             <p className="mt-1 text-sm text-white/75">
-              {users.length === 1 ? "1 usuario en este rol." : `${users.length} usuarios en este rol.`}
+              {filteredUsers.length === 1
+                ? "1 usuario visible en este rol."
+                : `${filteredUsers.length} usuarios visibles en este rol.`}
             </p>
+            {shouldShowUserFilters && filteredUsers.length !== users.length ? (
+              <p className="mt-1 text-xs text-white/60">
+                Total del rol: {users.length}
+              </p>
+            ) : null}
           </div>
           <button
             type="button"
@@ -197,8 +257,32 @@ export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKe
         {error && !isCreateModalOpen ? <p className="mt-3 text-sm text-rose-200">{error}</p> : null}
       </section>
 
+      {shouldShowUserFilters ? (
+        <section className="rounded-3xl border border-white/15 bg-[#17385a] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Buscar por DNI, username o email"
+              className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-sm text-white placeholder:text-white/55 md:col-span-2"
+            />
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-sm text-white"
+            >
+              <option value="all">Todos los estados</option>
+              <option value="active">Activos</option>
+              <option value="inactive">Desactivados</option>
+              <option value="deleted">Eliminados</option>
+            </select>
+          </div>
+        </section>
+      ) : null}
+
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {users.map((user) => {
+        {filteredUsers.map((user) => {
           const status = getStatus(user);
           const shouldShowPermanent = user?.isDeleted === true || user?.isActive === false;
 
@@ -215,6 +299,7 @@ export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKe
                   <p className="mt-2 text-lg font-semibold text-white">
                     {user.username}
                   </p>
+                  <p className="mt-1 text-sm text-white/70">DNI: {user.dni || "Sin dato"}</p>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}>
                   {status.label}
@@ -224,6 +309,11 @@ export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKe
               <p className="mt-2 text-sm text-white/75">{user.email || "Sin email"}</p>
               {isCoachRole || isAthleteRole ? (
                 <p className="mt-1 text-sm text-white/75">Gym: {getCoachGymLabel(user)}</p>
+              ) : null}
+              {isAthleteRole ? (
+                <p className="mt-1 text-sm text-white/75">
+                  Coach: {(athleteCoachLabelsByUserId?.[String(user.id)] || []).join(" · ") || "Sin coach asignado"}
+                </p>
               ) : null}
 
               <div className="mt-4 flex flex-wrap gap-2">
@@ -255,6 +345,11 @@ export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKe
             </article>
           );
         })}
+        {filteredUsers.length === 0 ? (
+          <article className="rounded-3xl border border-white/15 bg-[#17385a] p-5 text-sm text-white/75 shadow-sm md:col-span-2 xl:col-span-3">
+            No hay usuarios que coincidan con los filtros actuales.
+          </article>
+        ) : null}
       </section>
 
       {isCreateModalOpen ? (
@@ -286,9 +381,20 @@ export default function RoleUsersManager({ roleId, roleName, users, viewerRoleKe
             </div>
 
             <form className="grid gap-3 md:grid-cols-2" onSubmit={handleCreateUser}>
+              {requiresDni ? (
+                <input
+                  required
+                  autoFocus
+                  type="text"
+                  placeholder="DNI"
+                  value={dni}
+                  onChange={(event) => setDni(event.target.value)}
+                  className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white"
+                />
+              ) : null}
               <input
                 required
-                autoFocus
+                autoFocus={!requiresDni}
                 type="text"
                 placeholder="Username"
                 value={username}

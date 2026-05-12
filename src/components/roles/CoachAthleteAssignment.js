@@ -25,6 +25,7 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  const [dni, setDni] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,6 +37,7 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
   const [weeklyAvailability, setWeeklyAvailability] = useState("");
 
   function resetCreateForm() {
+    setDni("");
     setUsername("");
     setEmail("");
     setPassword("");
@@ -103,6 +105,7 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          dni,
           username,
           email,
           password,
@@ -249,6 +252,7 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
             </div>
 
             <form className="grid gap-3" onSubmit={handleCreateAndAssignAthlete}>
+              <input required type="text" placeholder="DNI" value={dni} onChange={(event) => setDni(event.target.value)} className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55" />
               <input required type="text" placeholder="Username" value={username} onChange={(event) => setUsername(event.target.value)} className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55" />
               <input required type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55" />
               <input required type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white" />

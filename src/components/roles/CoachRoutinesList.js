@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 import CoachRoutineForm from "@/components/roles/CoachRoutineForm";
 import RoutineEditButton from "@/components/roles/RoutineEditButton";
 
-export default function CoachRoutinesList({ roleId, userId, coachId, routines }) {
+export default function CoachRoutinesList({ roleId, userId, coachId, routines, viewerRoleKey = "unknown" }) {
   const router = useRouter();
   const [loadingRoutineId, setLoadingRoutineId] = useState(null);
   const [error, setError] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const canCreateRoutine = viewerRoleKey === "coach" || viewerRoleKey === "admin";
 
   async function handleDeleteRoutine(routineId) {
     setLoadingRoutineId(routineId);
@@ -37,13 +38,15 @@ export default function CoachRoutinesList({ roleId, userId, coachId, routines })
     <div className="mt-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-white/75">Gestiona las rutinas creadas para este coach.</p>
-        <button
-          type="button"
-          onClick={() => setIsCreateModalOpen(true)}
-          className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
-        >
-          Crear rutina
-        </button>
+        {canCreateRoutine ? (
+          <button
+            type="button"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
+          >
+            Crear rutina
+          </button>
+        ) : null}
       </div>
       {error ? <p className="text-sm text-rose-200">{error}</p> : null}
       {routines.length === 0 ? (
@@ -78,7 +81,7 @@ export default function CoachRoutinesList({ roleId, userId, coachId, routines })
         </div>
       )}
 
-      {isCreateModalOpen ? (
+      {isCreateModalOpen && canCreateRoutine ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
         >

@@ -42,6 +42,11 @@ function requiresAdminOwner(roleName) {
   return name === "coach" || name === "atleta" || name === "athlete";
 }
 
+function requiresDni(roleName) {
+  const name = normalizeRoleName(roleName);
+  return name === "coach" || name === "atleta" || name === "athlete";
+}
+
 function isAdminRole(roleName) {
   const name = normalizeRoleName(roleName);
   return name === "admin" || name === "administrador" || name === "gym" || name === "gimnasio";
@@ -70,6 +75,7 @@ export async function POST(request) {
     const body = await request.json();
 
     const username = body?.username?.trim().toUpperCase();
+    const dni = body?.dni?.trim();
     const email = body?.email?.trim().toLowerCase();
     const password = body?.password;
     const idRole = Number(body?.idRole);
@@ -97,8 +103,16 @@ export async function POST(request) {
 
     const targetRole = roles.find((role) => Number(role?.id) === idRole);
     const targetRoleName = targetRole?.name || "";
+    const shouldRequireDni = requiresDni(targetRoleName);
     const shouldRequireBirthAndGender = !isAdminRole(targetRoleName);
     const shouldAssignOwner = requiresAdminOwner(targetRoleName);
+
+    if (shouldRequireDni && !dni) {
+      return NextResponse.json(
+        { message: "dni es obligatorio para este rol." },
+        { status: 400 }
+      );
+    }
 
     if (shouldRequireBirthAndGender && (!birthDate || !gender)) {
       return NextResponse.json(
@@ -145,6 +159,7 @@ export async function POST(request) {
       email,
       password,
       idRole,
+      ...(dni ? { dni } : {}),
       ...(shouldRequireBirthAndGender ? { birthDate, gender } : {}),
       ...(shouldAssignOwner ? { idAdminOwner: Number(idAdminOwner) } : {}),
       ...(height !== undefined && height !== null && height !== "" ? { height: Number(height) } : {}),

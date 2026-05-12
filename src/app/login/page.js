@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,7 +21,7 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username: username.trim().toUpperCase(), password }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
 
       const data = await response.json().catch(() => ({}));
@@ -50,17 +50,17 @@ export default function LoginPage() {
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label className="mb-1 block text-sm font-medium text-white/85" htmlFor="username">
-              Usuario
+            <label className="mb-1 block text-sm font-medium text-white/85" htmlFor="email">
+              Email
             </label>
             <input
-              id="username"
-              name="username"
-              type="text"
-              autoComplete="username"
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
               required
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               className="w-full rounded-xl border border-white/20 bg-[#0f2a46]/90 px-3 py-2 text-white placeholder:text-white/45 outline-none transition focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-300/30"
             />
           </div>

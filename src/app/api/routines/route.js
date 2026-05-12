@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 
 const ROUTINES_URL = "https://rutina360-server.onrender.com/routine/";
 
@@ -7,6 +8,8 @@ export async function POST(request) {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
+    const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
+    const roleKey = normalizeRoleKey(sessionUser?.roleName);
     const body = await request.json();
 
     const name = body?.name?.trim();
@@ -19,6 +22,13 @@ export async function POST(request) {
       return NextResponse.json(
         { message: "name, idUser, order, time y exercises son obligatorios." },
         { status: 400 }
+      );
+    }
+
+    if (roleKey !== "coach" && roleKey !== "admin") {
+      return NextResponse.json(
+        { message: "Solo gym o coach pueden crear rutinas." },
+        { status: 403 }
       );
     }
 

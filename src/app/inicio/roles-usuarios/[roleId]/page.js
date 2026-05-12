@@ -5,6 +5,7 @@ import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
 const USERS_URL = "https://rutina360-server.onrender.com/users";
+const USER_LINKS_URL = "https://rutina360-server.onrender.com/users/link";
 
 async function getRoleById(roleId, token) {
   const response = await fetch(ROLES_URL, {
@@ -65,6 +66,22 @@ async function getUserById(userId, token) {
   return users.find((user) => Number(user?.id) === Number(userId)) || null;
 }
 
+async function getUserLinks(token) {
+  const response = await fetch(USER_LINKS_URL, {
+    cache: "no-store",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const json = await response.json().catch(() => ({}));
+  return Array.isArray(json?.data) ? json.data : [];
+}
+
 
 function isAthleteRoleName(value) {
   return ["athlete", "atleta"].includes(String(value || "").trim().toLowerCase());
@@ -122,6 +139,7 @@ export default async function RolUsuariosDetallePage({ params }) {
   let viewerUser = null;
   let coachRoleId = null;
   let gymOwners = [];
+  let athleteCoachLabelsByUserId = {};
 
   try {
     const cookieStore = await cookies();
@@ -130,11 +148,12 @@ export default async function RolUsuariosDetallePage({ params }) {
     roleKey = normalizeRoleKey(sessionUser?.roleName);
     const viewerId = Number(sessionUser?.id) || null;
 
-    const [roleResult, usersResult, allUsers, fetchedViewerUser] = await Promise.all([
+    const [roleResult, usersResult, allUsers, fetchedViewerUser, userLinks] = await Promise.all([
       getRoleById(roleId, token),
       getUsers(roleId, token),
       fetchUsersFrom(USERS_URL, token),
       getUserById(viewerId, token),
+      getUserLinks(token),
     ]);
     role = roleResult;
     viewerUser = fetchedViewerUser;
@@ -165,6 +184,47 @@ export default async function RolUsuariosDetallePage({ params }) {
           email: candidate.email || "",
         }))
         .sort((a, b) => String(a.username).localeCompare(String(b.username), "es"));
+    }
+
+    if (isAthleteRoleName(role?.name || "")) {
+      const sourceUsers = Array.isArray(allUsers) ? allUsers : [];
+      const coachNameById = new Map(
+        sourceUsers.map((candidate) => [
+          String(candidate?.id),
+          candidate?.username || candidate?.email || `Coach #${candidate?.id}`,
+        ])
+      );
+
+      const labelsByAthleteId = new Map();
+      for (const link of Array.isArray(userLinks) ? userLinks : []) {
+        if (link?.isDeleted === true || link?.isActive === false) {
+          continue;
+        }
+
+        const athleteId = Number(link?.idAthlete || link?.athlete?.id);
+        const coachId = Number(link?.idCoach || link?.coach?.id);
+        if (!Number.isFinite(athleteId) || athleteId <= 0 || !Number.isFinite(coachId) || coachId <= 0) {
+          continue;
+        }
+
+        const coachLabel =
+          link?.coach?.username ||
+          link?.coach?.email ||
+          coachNameById.get(String(coachId)) ||
+          `Coach #${coachId}`;
+
+        if (!labelsByAthleteId.has(String(athleteId))) {
+          labelsByAthleteId.set(String(athleteId), new Set());
+        }
+        labelsByAthleteId.get(String(athleteId)).add(String(coachLabel));
+      }
+
+      athleteCoachLabelsByUserId = Object.fromEntries(
+        Array.from(labelsByAthleteId.entries()).map(([athleteId, labels]) => [
+          athleteId,
+          Array.from(labels).slice(0, 2),
+        ])
+      );
     }
   } catch (error) {
     errorMessage = error.message;
@@ -210,6 +270,7 @@ export default async function RolUsuariosDetallePage({ params }) {
           users={users}
           viewerRoleKey={roleKey}
           gymOwners={gymOwners}
+          athleteCoachLabelsByUserId={athleteCoachLabelsByUserId}
         />
       )}
     </section>

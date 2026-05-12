@@ -13,15 +13,24 @@ function firstNonEmptyString(values) {
   return "";
 }
 
+function normalizeRoleName(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isAthleteRole(value) {
+  const roleName = normalizeRoleName(value);
+  return roleName === "athlete" || roleName === "atleta";
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();
-    const username = body?.username?.trim().toUpperCase();
+    const email = body?.email?.trim().toLowerCase();
     const password = body?.password;
 
-    if (!username || !password) {
+    if (!email || !password) {
       return NextResponse.json(
-        { message: "Usuario y contrasena son obligatorios." },
+        { message: "Email y contrasena son obligatorios." },
         { status: 400 }
       );
     }
@@ -31,7 +40,7 @@ export async function POST(request) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email, password }),
       cache: "no-store",
     });
 
@@ -65,6 +74,13 @@ export async function POST(request) {
           idRole: Number(loggedUser?.idRole) || null,
         }
       : null;
+
+    if (isAthleteRole(safeSessionUser?.roleName)) {
+      return NextResponse.json(
+        { message: "Acceso denegado: los atletas no pueden iniciar sesion en este panel." },
+        { status: 403 }
+      );
+    }
 
     const cookieStore = await cookies();
     const baseCookieOptions = {

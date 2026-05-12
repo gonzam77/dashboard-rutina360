@@ -5,6 +5,8 @@ import AthleteRoutineAssignment from "@/components/roles/AthleteRoutineAssignmen
 import AthleteAssignedRoutinesList from "@/components/roles/AthleteAssignedRoutinesList";
 import CoachAthleteAssignment from "@/components/roles/CoachAthleteAssignment";
 import BackNavButton from "@/components/BackNavButton";
+import UserProfileEditor from "@/components/roles/UserProfileEditor";
+import AthleteCoachLinkCard from "@/components/roles/AthleteCoachLinkCard";
 import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
@@ -119,6 +121,7 @@ export default async function UserProfilePage({ params, searchParams }) {
   let userRoleName = "";
   let athleteRoleId = null;
   let routines = [];
+  let userLinks = [];
   let coachRoutines = [];
   let assignedAthletes = [];
   let athleteAssignedRoutines = [];
@@ -140,11 +143,12 @@ export default async function UserProfilePage({ params, searchParams }) {
     users = fetchedUsers;
 
     // Estos recursos pueden fallar por permisos de rol; la vista sigue operativa con estados vacios.
-    const [fetchedRoutines, userLinks] = await Promise.all([
+    const [fetchedRoutines, fetchedUserLinks] = await Promise.all([
       fetchListSafe(ROUTINES_URL, token),
       fetchListSafe(USER_LINKS_URL, token),
     ]);
     routines = fetchedRoutines;
+    userLinks = fetchedUserLinks;
 
     role = roles.find((item) => String(item?.id) === String(roleId)) || null;
     const athleteRole = roles.find((item) => isAthleteRoleName(item?.name));
@@ -201,7 +205,6 @@ export default async function UserProfilePage({ params, searchParams }) {
         : Number.isFinite(fallbackGymId) && fallbackGymId > 0
           ? fallbackGymId
         : null;
-  const shouldShowGender = isCoachProfile || isAthleteProfile;
   const backFallbackHref = effectiveCoachId
     ? `/inicio/roles-usuarios/${roleId}/${effectiveCoachId}`
     : `/inicio/roles-usuarios/${roleId}`;
@@ -233,6 +236,73 @@ export default async function UserProfilePage({ params, searchParams }) {
           return resolveGymOwnerId(ownerUser) === targetGymOwnerId;
         })
       : routines.filter((routine) => String(routine?.idUser) === String(effectiveCoachId));
+  const athleteLink =
+    isAthleteProfile && user
+      ? userLinks.find((link) => Number(link?.idAthlete) === Number(user.id)) ||
+        userLinks.find((link) => Number(link?.athlete?.id) === Number(user.id)) ||
+        null
+      : null;
+  const athleteCoachLinks =
+    isAthleteProfile && user
+      ? userLinks.filter(
+          (link) =>
+            (Number(link?.idAthlete) === Number(user.id) || Number(link?.athlete?.id) === Number(user.id)) &&
+            link?.isDeleted !== true &&
+            link?.isActive !== false
+        )
+      : [];
+  const assignedCoaches = Array.from(
+    new Map(
+      athleteCoachLinks
+        .map((link) => {
+          const coachId = Number(link?.idCoach || link?.coach?.id);
+          if (!Number.isFinite(coachId) || coachId <= 0) {
+            return null;
+          }
+
+          const coachUser =
+            link?.coach ||
+            users.find((item) => Number(item?.id) === coachId) ||
+            null;
+
+          return [
+            String(coachId),
+            {
+              id: coachId,
+              username: coachUser?.username || `Coach #${coachId}`,
+              email: coachUser?.email || "",
+            },
+          ];
+        })
+        .filter(Boolean)
+    ).values()
+  );
+  const assignedCoachIds = new Set(assignedCoaches.map((coachItem) => Number(coachItem.id)));
+  const availableCoaches = users.filter((candidate) => {
+    const candidateRoleName = String(candidate?.Rol?.name || "").trim().toLowerCase();
+    if (candidateRoleName !== "coach") {
+      return false;
+    }
+
+    const candidateId = Number(candidate?.id);
+    if (!Number.isFinite(candidateId) || candidateId <= 0) {
+      return false;
+    }
+
+    if (assignedCoachIds.has(candidateId)) {
+      return false;
+    }
+
+    if (!targetGymOwnerId) {
+      return true;
+    }
+
+    return resolveGymOwnerId(candidate) === Number(targetGymOwnerId);
+  });
+  const assignedCoachId = Number(athleteLink?.idCoach) || null;
+  const assignedCoachUser =
+    athleteLink?.coach ||
+    (assignedCoachId ? users.find((item) => Number(item?.id) === assignedCoachId) || null : null);
 
   return (
     <section className="space-y-6 text-slate-100">
@@ -265,31 +335,32 @@ export default async function UserProfilePage({ params, searchParams }) {
       ) : null}
 
       {!errorMessage && user ? (
-        <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-          <h2 className="text-lg font-bold text-white">Datos del perfil</h2>
-          <div className="mt-4 grid grid-cols-1 gap-3 text-sm text-white/85 md:grid-cols-2">
-            <p><span className="font-medium">Username:</span> {user.username || "Sin dato"}</p>
-            <p><span className="font-medium">Email:</span> {user.email || "Sin dato"}</p>
-            <p><span className="font-medium">Nacimiento:</span> {formatDate(user.birthDate)}</p>
-            {shouldShowGender ? <p><span className="font-medium">Genero:</span> {user.gender || "Sin dato"}</p> : null}
-            <p><span className="font-medium">Telefono:</span> {user.phone || "Sin dato"}</p>
-            <p><span className="font-medium">Direccion:</span> {user.address || "Sin dato"}</p>
-            {isAthleteProfile ? (
-              <>
-                <p><span className="font-medium">Altura:</span> {user.height || "Sin dato"}</p>
-                <p><span className="font-medium">Peso:</span> {user.weight || "Sin dato"}</p>
-                <p><span className="font-medium">Objetivo:</span> {user.goal || "Sin dato"}</p>
-                <p><span className="font-medium">Disponibilidad:</span> {user.weeklyAvailability || "Sin dato"}</p>
-              </>
-            ) : null}
-          </div>
-        </section>
+        isAthleteProfile ? (
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <UserProfileEditor user={user} roleName={userRoleName} />
+            <AthleteCoachLinkCard
+              roleId={roleId}
+              athleteId={user.id}
+              coach={assignedCoachUser}
+              assignedCoaches={assignedCoaches}
+              availableCoaches={availableCoaches}
+            />
+          </section>
+        ) : (
+          <UserProfileEditor user={user} roleName={userRoleName} />
+        )
       ) : null}
 
       {!errorMessage && user && isCoachProfile ? (
         <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
           <h2 className="text-lg font-bold text-white">Rutinas del coach</h2>
-          <CoachRoutinesList roleId={roleId} userId={user.id} coachId={user.id} routines={coachRoutines} />
+          <CoachRoutinesList
+            roleId={roleId}
+            userId={user.id}
+            coachId={user.id}
+            routines={coachRoutines}
+            viewerRoleKey={viewerRoleKey}
+          />
         </section>
       ) : null}
 
@@ -337,6 +408,7 @@ export default async function UserProfilePage({ params, searchParams }) {
           athleteId={user.id}
           coachId={effectiveCoachId}
           coachRoutines={coachRoutinesWithinGym}
+          assignedRoutines={athleteAssignedRoutines}
         />
       ) : null}
 
