@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import RoutineEditButton from "@/components/roles/RoutineEditButton";
 
-const ROUTINES_URL = "https://rutina360-server.onrender.com/routine/";
+const ROUTINES_URL = "https://rutina360-server.onrender.com/routine";
 const EXERCISES_URL = "https://rutina360-server.onrender.com/ejercice";
 
 async function fetchList(url, fallbackMessage, token) {

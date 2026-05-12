@@ -11,7 +11,7 @@ import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
 const USERS_URL = "https://rutina360-server.onrender.com/users";
-const ROUTINES_URL = "https://rutina360-server.onrender.com/routine/";
+const ROUTINES_URL = "https://rutina360-server.onrender.com/routine";
 const USER_LINKS_URL = "https://rutina360-server.onrender.com/users/link";
 const ATHLETE_ASSIGNED_ROUTINES_URL = "https://rutina360-server.onrender.com/routine/assign/athlete/";
 
@@ -87,6 +87,30 @@ function resolveGymOwnerId(candidate) {
 
   const ownerId = Number(candidate?.idAdminOwner);
   return Number.isFinite(ownerId) && ownerId > 0 ? ownerId : null;
+}
+
+function getRoutineOwnerCandidate(routine) {
+  return (
+    routine?.creator ||
+    routine?.Creator ||
+    routine?.User ||
+    routine?.user ||
+    routine?.Owner ||
+    routine?.owner ||
+    routine?.Coach ||
+    routine?.coach ||
+    null
+  );
+}
+
+function getOwnerRoleName(ownerUser, ownerFromRoutine) {
+  return String(
+    ownerUser?.Rol?.name ||
+    ownerFromRoutine?.Rol?.name ||
+    ownerFromRoutine?.role?.name ||
+    ownerFromRoutine?.Role?.name ||
+    ""
+  ).trim().toLowerCase();
 }
 
 async function fetchAthleteAssignedRoutines(athleteId, token) {
@@ -195,6 +219,8 @@ export default async function UserProfilePage({ params, searchParams }) {
   const isCoachProfile = userRoleName.trim().toLowerCase() === "coach";
   const isAthleteProfile = isAthleteRoleName(userRoleName);
   const isViewerGym = isGymRoleName(viewerRoleName);
+  const viewerUser = users.find((item) => Number(item?.id) === Number(viewerUserId)) || null;
+  const viewerGymOwnerId = resolveGymOwnerId(viewerUser);
   const fallbackCoachId = viewerRoleKey === "coach" ? viewerUserId : null;
   const fallbackGymId = isViewerGym ? viewerUserId : null;
   const effectiveCoachId =
@@ -214,28 +240,59 @@ export default async function UserProfilePage({ params, searchParams }) {
   const athleteGymOwnerId = Number(user?.idAdminOwner) || Number(user?.adminOwner?.id) || null;
   const selectedCoachGymOwnerId = resolveGymOwnerId(selectedCoachUser);
   const targetGymOwnerId = selectedCoachGymOwnerId || athleteGymOwnerId || null;
-  const coachRoutinesWithinGym =
-    effectiveCoachId && targetGymOwnerId
-      ? routines.filter((routine) => {
-          const routineOwnerId = Number(routine?.idUser);
-          if (!Number.isFinite(routineOwnerId) || routineOwnerId <= 0) {
-            return false;
-          }
+  const assignableRoutinesWithinGym = routines.filter((routine) => {
+    const routineOwnerId = Number(routine?.idUser);
+    if (!Number.isFinite(routineOwnerId) || routineOwnerId <= 0) {
+      return false;
+    }
 
-          if (routineOwnerId === Number(effectiveCoachId)) {
-            return true;
-          }
+    const ownerUser = users.find((item) => Number(item?.id) === routineOwnerId) || null;
+    const ownerFromRoutine = getRoutineOwnerCandidate(routine);
+    const ownerRoleName = getOwnerRoleName(ownerUser, ownerFromRoutine);
+    const ownerGymOwnerId = resolveGymOwnerId(ownerUser) || resolveGymOwnerId(ownerFromRoutine);
 
-          // Fallback: incluir rutinas creadas directamente por el gym owner
-          // aunque ese usuario no venga en el listado parcial de /users.
-          if (routineOwnerId === Number(targetGymOwnerId)) {
-            return true;
-          }
+    if (viewerRoleKey === "coach") {
+      if (routineOwnerId === Number(viewerUserId)) {
+        return true;
+      }
 
-          const ownerUser = users.find((item) => Number(item?.id) === routineOwnerId);
-          return resolveGymOwnerId(ownerUser) === targetGymOwnerId;
-        })
-      : routines.filter((routine) => String(routine?.idUser) === String(effectiveCoachId));
+      if (targetGymOwnerId && routineOwnerId === Number(targetGymOwnerId)) {
+        return true;
+      }
+
+      if (ownerRoleName === "coach" && targetGymOwnerId && ownerGymOwnerId === Number(targetGymOwnerId)) {
+        return true;
+      }
+
+      return false;
+    }
+
+    if (viewerRoleKey === "admin") {
+      if (routineOwnerId === Number(viewerUserId)) {
+        return true;
+      }
+
+      if (ownerRoleName === "coach" && ownerGymOwnerId === Number(viewerUserId)) {
+        return true;
+      }
+
+      return false;
+    }
+
+    if (routineOwnerId === Number(effectiveCoachId)) {
+      return true;
+    }
+
+    if (targetGymOwnerId && routineOwnerId === Number(targetGymOwnerId)) {
+      return true;
+    }
+
+    if (targetGymOwnerId && resolveGymOwnerId(ownerUser) === Number(targetGymOwnerId)) {
+      return true;
+    }
+
+    return targetGymOwnerId && resolveGymOwnerId(ownerFromRoutine) === Number(targetGymOwnerId);
+  });
   const athleteLink =
     isAthleteProfile && user
       ? userLinks.find((link) => Number(link?.idAthlete) === Number(user.id)) ||
@@ -303,6 +360,86 @@ export default async function UserProfilePage({ params, searchParams }) {
   const assignedCoachUser =
     athleteLink?.coach ||
     (assignedCoachId ? users.find((item) => Number(item?.id) === assignedCoachId) || null : null);
+
+  const assignmentRoutineGroups = (() => {
+    const source = Array.isArray(assignableRoutinesWithinGym) ? assignableRoutinesWithinGym : [];
+    const own = [];
+    const others = [];
+    const gym = [];
+    const groupGymOwnerId = Number(targetGymOwnerId) || Number(viewerGymOwnerId) || null;
+
+    for (const routine of source) {
+      const ownerId = Number(routine?.idUser);
+      if (!Number.isFinite(ownerId) || ownerId <= 0) {
+        continue;
+      }
+
+      const ownerUser = users.find((item) => Number(item?.id) === ownerId) || null;
+      const ownerFromRoutine = getRoutineOwnerCandidate(routine);
+      const ownerRoleName = getOwnerRoleName(ownerUser, ownerFromRoutine);
+      const ownerGymOwnerId = resolveGymOwnerId(ownerUser) || resolveGymOwnerId(ownerFromRoutine);
+
+      if (viewerRoleKey === "coach") {
+        if (ownerId === Number(viewerUserId)) {
+          own.push(routine);
+          continue;
+        }
+
+        if (groupGymOwnerId && ownerId === Number(groupGymOwnerId)) {
+          gym.push(routine);
+          continue;
+        }
+
+        if (ownerRoleName === "coach" && ownerGymOwnerId && groupGymOwnerId && ownerGymOwnerId === groupGymOwnerId) {
+          others.push(routine);
+          continue;
+        }
+
+        if (isAdminOrGymRoleName(ownerRoleName) && groupGymOwnerId && ownerId === groupGymOwnerId) {
+          gym.push(routine);
+          continue;
+        }
+
+        if (ownerGymOwnerId && groupGymOwnerId && ownerGymOwnerId === groupGymOwnerId) {
+          others.push(routine);
+          continue;
+        }
+      }
+
+      if (viewerRoleKey === "admin") {
+        if (ownerId === Number(viewerUserId)) {
+          own.push(routine);
+          continue;
+        }
+
+        if (ownerRoleName === "coach" && ownerGymOwnerId && ownerGymOwnerId === Number(viewerUserId)) {
+          others.push(routine);
+          continue;
+        }
+      }
+    }
+
+    if (viewerRoleKey === "coach") {
+      return {
+        own,
+        others,
+        gym,
+      };
+    }
+
+    if (viewerRoleKey === "admin") {
+      return {
+        own,
+        others,
+      };
+    }
+
+    return {
+      own: source,
+      others: [],
+      gym: [],
+    };
+  })();
 
   return (
     <section className="space-y-6 text-slate-100">
@@ -407,8 +544,10 @@ export default async function UserProfilePage({ params, searchParams }) {
         <AthleteRoutineAssignment
           athleteId={user.id}
           coachId={effectiveCoachId}
-          coachRoutines={coachRoutinesWithinGym}
+          coachRoutines={assignableRoutinesWithinGym}
           assignedRoutines={athleteAssignedRoutines}
+          viewerRoleKey={viewerRoleKey}
+          routineGroups={assignmentRoutineGroups}
         />
       ) : null}
 

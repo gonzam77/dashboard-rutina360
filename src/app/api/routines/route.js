@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 
-const ROUTINES_URL = "https://rutina360-server.onrender.com/routine/";
+const ROUTINES_URL = "https://rutina360-server.onrender.com/routine";
 
 export async function POST(request) {
   try {

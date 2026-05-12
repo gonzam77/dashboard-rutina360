@@ -5,7 +5,7 @@ import { parseSessionUserCookie } from "@/lib/session";
 
 const MUSCLE_GROUPS_URL = "https://rutina360-server.onrender.com/muscleGroup";
 const EXERCISES_URL = "https://rutina360-server.onrender.com/ejercice";
-const ROUTINES_URL = "https://rutina360-server.onrender.com/routine/";
+const ROUTINES_URL = "https://rutina360-server.onrender.com/routine";
 
 function normalizeRoleName(value) {
   return String(value || "").trim().toLowerCase();

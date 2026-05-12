@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 import CoachCreateRoutineButton from "@/components/roles/CoachCreateRoutineButton";
 
-const ROUTINES_URL = "https://rutina360-server.onrender.com/routine/";
+const ROUTINES_URL = "https://rutina360-server.onrender.com/routine";
 const USERS_URL = "https://rutina360-server.onrender.com/users";
 const ASSIGNMENTS_URL = "https://rutina360-server.onrender.com/routine/assign";
 
@@ -112,81 +112,71 @@ function resolveGymOwnerId(candidate) {
   return Number.isFinite(nestedOwnerId) && nestedOwnerId > 0 ? nestedOwnerId : null;
 }
 
+function getRoutineOwnerCandidate(routine) {
+  return (
+    routine?.creator ||
+    routine?.Creator ||
+    routine?.User ||
+    routine?.user ||
+    routine?.Owner ||
+    routine?.owner ||
+    routine?.Coach ||
+    routine?.coach ||
+    null
+  );
+}
+
 function filterDataByViewerRole(routines, users, assignments, roleKey, viewerId) {
-  if (roleKey === "super_admin") {
-    return { routines, users, assignments };
-  }
+  return { routines, users, assignments };
+}
+
+function classifyRoutineSource(row, roleKey, viewerId, viewerGymOwnerId = null) {
+  const ownerId = Number(row?.routine?.idUser);
+  const ownerRoleName = String(
+    row?.creator?.Rol?.name ||
+    row?.creator?.role?.name ||
+    row?.creator?.Role?.name ||
+    ""
+  ).trim().toLowerCase();
+  const ownerGymOwnerId = resolveGymOwnerId(row?.creator || null);
 
   if (roleKey === "coach") {
-    const coachRoutines = routines.filter((routine) => Number(routine?.idUser) === Number(viewerId));
-    const visibleRoutineIds = new Set(coachRoutines.map((routine) => String(routine?.id)));
-    const visibleAssignments = assignments.filter((assignment) => {
-      const routineId = assignment?.idRoutine || assignment?.Routine?.id;
-      return visibleRoutineIds.has(String(routineId));
-    });
-    const visibleUsers = users.filter((user) => Number(user?.id) === Number(viewerId));
+    if (ownerId === Number(viewerId)) {
+      return "own";
+    }
 
-    return { routines: coachRoutines, users: visibleUsers, assignments: visibleAssignments };
+    if (isAdminOrGymRoleName(ownerRoleName)) {
+      return "gym";
+    }
+
+    if (ownerRoleName === "coach") {
+      return "other_coaches";
+    }
+
+    if (viewerGymOwnerId && ownerGymOwnerId && Number(ownerGymOwnerId) === Number(viewerGymOwnerId)) {
+      if (ownerId === Number(viewerGymOwnerId)) {
+        return "gym";
+      }
+
+      return "other_coaches";
+    }
+
+    // Si llego hasta aca y es visible para el coach, mantenerla en el grupo de otros coaches
+    // para no ocultar rutinas por falta de metadatos del creador.
+    return "other_coaches";
   }
 
   if (roleKey === "admin") {
-    const userById = new Map(users.map((user) => [String(user?.id), user]));
-    const gymRoutines = routines.filter((routine) => {
-      const ownerId = Number(routine?.idUser);
-      if (!Number.isFinite(ownerId) || ownerId <= 0) {
-        return false;
-      }
+    if (ownerId === Number(viewerId)) {
+      return "gym";
+    }
 
-      if (ownerId === Number(viewerId)) {
-        return true;
-      }
-
-      // Fallback: algunos payloads no incluyen todos los usuarios del gym.
-      const ownerFromUsers = userById.get(String(ownerId));
-      if (resolveGymOwnerId(ownerFromUsers) === Number(viewerId)) {
-        return true;
-      }
-
-      const ownerFromRoutine =
-        routine?.creator ||
-        routine?.Creator ||
-        routine?.User ||
-        routine?.user ||
-        routine?.Owner ||
-        routine?.owner ||
-        routine?.Coach ||
-        routine?.coach ||
-        null;
-
-      return resolveGymOwnerId(ownerFromRoutine) === Number(viewerId);
-    });
-    const gymRoutineIds = new Set(gymRoutines.map((routine) => String(routine?.id)));
-    const gymRoutineOwnerIds = new Set(gymRoutines.map((routine) => String(routine?.idUser)));
-    const gymUsers = users.filter((user) => {
-      const userId = Number(user?.id);
-      if (!Number.isFinite(userId) || userId <= 0) {
-        return false;
-      }
-
-      if (userId === Number(viewerId)) {
-        return true;
-      }
-
-      if (gymRoutineOwnerIds.has(String(userId))) {
-        return true;
-      }
-
-      return resolveGymOwnerId(user) === Number(viewerId);
-    });
-    const gymAssignments = assignments.filter((assignment) => {
-      const routineId = assignment?.idRoutine || assignment?.Routine?.id;
-      return gymRoutineIds.has(String(routineId));
-    });
-
-    return { routines: gymRoutines, users: gymUsers, assignments: gymAssignments };
+    if (ownerRoleName === "coach") {
+      return "coaches";
+    }
   }
 
-  return { routines, users, assignments };
+  return "all";
 }
 
 function buildRoutineRows(routines, assignments, users) {
@@ -265,6 +255,7 @@ export default async function RutinasCreadasPage() {
   let errorMessage = "";
   let roleKey = "unknown";
   let viewerId = null;
+  let viewerGymOwnerId = null;
 
   try {
     const cookieStore = await cookies();
@@ -280,6 +271,8 @@ export default async function RutinasCreadasPage() {
     ]);
 
     const filtered = filterDataByViewerRole(routines, users, assignments, roleKey, viewerId);
+    const viewerUser = filtered.users.find((item) => Number(item?.id) === Number(viewerId)) || null;
+    viewerGymOwnerId = resolveGymOwnerId(viewerUser);
     rows = buildRoutineRows(filtered.routines, filtered.assignments, filtered.users);
   } catch (error) {
     errorMessage = error.message;
@@ -287,6 +280,32 @@ export default async function RutinasCreadasPage() {
 
   const assignedRoutinesCount = rows.filter((row) => row.assignedCount > 0).length;
   const totalAssignments = rows.reduce((total, row) => total + row.assignedCount, 0);
+  const groupedRows = rows.reduce(
+    (accumulator, row) => {
+      const source = classifyRoutineSource(row, roleKey, viewerId, viewerGymOwnerId);
+      if (!accumulator[source]) {
+        accumulator[source] = [];
+      }
+      accumulator[source].push(row);
+      return accumulator;
+    },
+    { own: [], other_coaches: [], gym: [], coaches: [], all: [] }
+  );
+
+  const displayGroups =
+    roleKey === "coach"
+      ? [
+          { key: "own", label: "Rutinas del coach" },
+          { key: "other_coaches", label: "Rutinas de otros coaches del gym" },
+          { key: "gym", label: "Rutinas del gym" },
+          { key: "all", label: "Otras rutinas visibles" },
+        ]
+      : roleKey === "admin"
+        ? [
+            { key: "gym", label: "Rutinas del gym" },
+            { key: "coaches", label: "Rutinas de coaches del gym" },
+          ]
+        : [{ key: "all", label: "Todas las rutinas visibles" }];
 
   return (
     <section className="space-y-6">
@@ -326,65 +345,77 @@ export default async function RutinasCreadasPage() {
       ) : null}
 
       {!errorMessage && rows.length > 0 ? (
-        <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-white/10 text-left text-sm">
-              <thead>
-                <tr className="text-xs uppercase tracking-wide text-white/60">
-                  <th className="px-3 py-3 font-semibold">Rutina</th>
-                  <th className="px-3 py-3 font-semibold">Creador</th>
-                  <th className="px-3 py-3 font-semibold">Usuarios asignados</th>
-                  <th className="px-3 py-3 font-semibold">Ejercicios</th>
-                  <th className="px-3 py-3 font-semibold">Detalle</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10 text-white/85">
-                {rows.map((row) => {
-                  const routine = row.routine;
-                  const creatorRoleId = row.creator?.idRole || row.creator?.Rol?.id;
+        <div className="space-y-4">
+          {displayGroups.map((group) => {
+            const groupRows = groupedRows[group.key] || [];
+            if (groupRows.length === 0) {
+              return null;
+            }
 
-                  return (
-                    <tr key={routine.id} className="align-top">
-                      <td className="px-3 py-4">
-                        <p className="font-semibold text-white">{routine?.name || `Rutina #${routine.id}`}</p>
-                        <p className="mt-1 text-xs text-white/60">ID {routine.id}</p>
-                        <p className="mt-1 text-xs text-white/60">Orden {routine?.order || "-"} - {routine?.time || "-"} min</p>
-                      </td>
-                      <td className="px-3 py-4">
-                        <p className="font-medium text-white">{row.creatorLabel}</p>
-                        <p className="mt-1 text-xs text-white/60">{row.creator?.email || `ID ${routine?.idUser || "-"}`}</p>
-                      </td>
-                      <td className="px-3 py-4">
-                        <span className="inline-flex rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100">
-                          {row.assignedCount} usuario{row.assignedCount === 1 ? "" : "s"}
-                        </span>
-                        {row.athleteNames.length > 0 ? (
-                          <p className="mt-2 max-w-xs text-xs text-white/65">
-                            {row.athleteNames.slice(0, 3).join(", ")}
-                            {row.athleteNames.length > 3 ? ` y ${row.athleteNames.length - 3} mas` : ""}
-                          </p>
-                        ) : null}
-                      </td>
-                      <td className="px-3 py-4">{row.exerciseCount}</td>
-                      <td className="px-3 py-4">
-                        {routine?.id && row.creator?.id && creatorRoleId ? (
-                          <Link
-                            href={`/inicio/roles-usuarios/${creatorRoleId}/${row.creator.id}/rutinas/${routine.id}`}
-                            className="inline-block rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
-                          >
-                            Ver rutina
-                          </Link>
-                        ) : (
-                          <span className="text-xs text-white/60">Sin enlace</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
+            return (
+              <section key={group.key} className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+                <h2 className="mb-4 text-base font-semibold text-white">{group.label}</h2>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-white/10 text-left text-sm">
+                    <thead>
+                      <tr className="text-xs uppercase tracking-wide text-white/60">
+                        <th className="px-3 py-3 font-semibold">Rutina</th>
+                        <th className="px-3 py-3 font-semibold">Creador</th>
+                        <th className="px-3 py-3 font-semibold">Usuarios asignados</th>
+                        <th className="px-3 py-3 font-semibold">Ejercicios</th>
+                        <th className="px-3 py-3 font-semibold">Detalle</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/10 text-white/85">
+                      {groupRows.map((row) => {
+                        const routine = row.routine;
+                        const creatorRoleId = row.creator?.idRole || row.creator?.Rol?.id;
+
+                        return (
+                          <tr key={`${group.key}-${routine.id}`} className="align-top">
+                            <td className="px-3 py-4">
+                              <p className="font-semibold text-white">{routine?.name || `Rutina #${routine.id}`}</p>
+                              <p className="mt-1 text-xs text-white/60">ID {routine.id}</p>
+                              <p className="mt-1 text-xs text-white/60">Orden {routine?.order || "-"} - {routine?.time || "-"} min</p>
+                            </td>
+                            <td className="px-3 py-4">
+                              <p className="font-medium text-white">{row.creatorLabel}</p>
+                              <p className="mt-1 text-xs text-white/60">{row.creator?.email || `ID ${routine?.idUser || "-"}`}</p>
+                            </td>
+                            <td className="px-3 py-4">
+                              <span className="inline-flex rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100">
+                                {row.assignedCount} usuario{row.assignedCount === 1 ? "" : "s"}
+                              </span>
+                              {row.athleteNames.length > 0 ? (
+                                <p className="mt-2 max-w-xs text-xs text-white/65">
+                                  {row.athleteNames.slice(0, 3).join(", ")}
+                                  {row.athleteNames.length > 3 ? ` y ${row.athleteNames.length - 3} mas` : ""}
+                                </p>
+                              ) : null}
+                            </td>
+                            <td className="px-3 py-4">{row.exerciseCount}</td>
+                            <td className="px-3 py-4">
+                              {routine?.id && row.creator?.id && creatorRoleId ? (
+                                <Link
+                                  href={`/inicio/roles-usuarios/${creatorRoleId}/${row.creator.id}/rutinas/${routine.id}`}
+                                  className="inline-block rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
+                                >
+                                  Ver rutina
+                                </Link>
+                              ) : (
+                                <span className="text-xs text-white/60">Sin enlace</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            );
+          })}
+        </div>
       ) : null}
     </section>
   );

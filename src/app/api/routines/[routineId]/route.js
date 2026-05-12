@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-const ROUTINES_URL = "https://rutina360-server.onrender.com/routine/";
+const ROUTINES_URL = "https://rutina360-server.onrender.com/routine";
 
 function normalizeRoutinePayload(body) {
   const name = String(body?.name || "").trim();
@@ -56,7 +56,7 @@ function normalizeRoutinePayload(body) {
 }
 
 async function sendRoutineUpdate(routineId, payload, token, method) {
-  return fetch(`${ROUTINES_URL}${routineId}`, {
+  return fetch(`${ROUTINES_URL}/${routineId}`, {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -115,7 +115,7 @@ export async function DELETE(_request, { params }) {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
 
-    const response = await fetch(`${ROUTINES_URL}${routineId}`, {
+    const response = await fetch(`${ROUTINES_URL}/${routineId}`, {
       method: "DELETE",
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
