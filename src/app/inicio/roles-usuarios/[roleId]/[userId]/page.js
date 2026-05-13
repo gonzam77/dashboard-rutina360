@@ -264,7 +264,13 @@ export default async function UserProfilePage({ params, searchParams }) {
         return true;
       }
 
-      return false;
+      if (ownerRoleName === "coach") {
+        return true;
+      }
+
+      // Mantener consistencia con la vista de rutinas creadas:
+      // si la rutina es visible para el coach, permitirla para asignacion.
+      return true;
     }
 
     if (viewerRoleKey === "admin") {
@@ -395,6 +401,11 @@ export default async function UserProfilePage({ params, searchParams }) {
           continue;
         }
 
+        if (ownerRoleName === "coach") {
+          others.push(routine);
+          continue;
+        }
+
         if (isAdminOrGymRoleName(ownerRoleName) && groupGymOwnerId && ownerId === groupGymOwnerId) {
           gym.push(routine);
           continue;
@@ -404,6 +415,11 @@ export default async function UserProfilePage({ params, searchParams }) {
           others.push(routine);
           continue;
         }
+
+        // Fallback consistente con "Rutinas creadas": clasificar en otros coaches
+        // para no ocultar rutinas visibles por metadatos incompletos.
+        others.push(routine);
+        continue;
       }
 
       if (viewerRoleKey === "admin") {

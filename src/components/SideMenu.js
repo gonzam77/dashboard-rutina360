@@ -13,13 +13,15 @@ const MENU_BY_ROLE = {
   admin: [
     { href: "/inicio", label: "Panel del gimnasio" },
     { href: "/inicio/roles-usuarios", label: "Coaches y atletas" },
+    { href: "/inicio/atletas", label: "Atletas del gym" },
     { href: "/inicio/rutinas-creadas", label: "Rutinas" },
     { href: "/inicio/catalogo-ejercicios", label: "Catalogo ejercicios" },
   ],
   coach: [
-    { href: "/inicio", label: "Mi panel" },
-    { href: "/inicio/roles-usuarios", label: "Mis atletas" },
-    { href: "/inicio/rutinas-creadas", label: "Mis rutinas" },
+    { href: "/inicio", label: "Inicio" },
+    { href: "/inicio/atletas", label: "Atletas del gym" },
+    { href: "/inicio/roles-usuarios", label: "Mi perfil" },
+    { href: "/inicio/rutinas-creadas", label: "Rutinas" },
   ],
   unknown: [
     { href: "/inicio", label: "Panel" },
@@ -55,7 +57,7 @@ export default function SideMenu({
   const effectiveMenuItems =
     roleKey === "coach"
       ? menuItems.map((item) =>
-          item.label === "Mis atletas" ? { ...item, href: coachProfileHref } : item
+          item.label === "Mi perfil" ? { ...item, href: coachProfileHref } : item
         )
       : menuItems;
   const [isOpen, setIsOpen] = useState(false);

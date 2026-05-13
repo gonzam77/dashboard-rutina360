@@ -27,6 +27,7 @@ function buildRoleHome(roleKey, profileHref, roleName) {
         actions: [
           ...(profileHref ? [{ href: profileHref, label: "Ir a mi perfil" }] : []),
           { href: "/inicio/roles-usuarios", label: "Gestionar coaches y atletas" },
+          { href: "/inicio/atletas", label: "Ver listado de atletas" },
           { href: "/inicio/rutinas-creadas", label: "Rutinas del gimnasio" },
           { href: "/inicio/catalogo-ejercicios", label: "Gestionar catalogo" },
         ],
@@ -50,6 +51,7 @@ function buildRoleHome(roleKey, profileHref, roleName) {
       actions: [
         ...(profileHref ? [{ href: profileHref, label: "Ir a mi perfil" }] : []),
         { href: profileHref || "/inicio/roles-usuarios", label: "Ver y asignar atletas" },
+        { href: "/inicio/atletas", label: "Ver atletas del gym" },
         { href: "/inicio/rutinas-creadas", label: "Mis rutinas" },
       ],
     };

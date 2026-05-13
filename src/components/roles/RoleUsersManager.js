@@ -30,6 +30,7 @@ export default function RoleUsersManager({
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const isAthleteRole = ["athlete", "atleta"].includes(String(roleName).trim().toLowerCase());
   const isCoachRole = String(roleName).trim().toLowerCase() === "coach";
@@ -179,6 +180,30 @@ export default function RoleUsersManager({
     }
   }
 
+  function openDeleteConfirm(user, permanent) {
+    setDeleteConfirm({
+      userId: Number(user?.id),
+      permanent: Boolean(permanent),
+      username: user?.username || `Usuario #${user?.id}`,
+    });
+  }
+
+  function closeDeleteConfirm() {
+    if (actionLoadingId !== null) {
+      return;
+    }
+    setDeleteConfirm(null);
+  }
+
+  async function confirmDeleteUser() {
+    if (!deleteConfirm?.userId) {
+      return;
+    }
+
+    await handleDeleteUser(deleteConfirm.userId, deleteConfirm.permanent);
+    setDeleteConfirm(null);
+  }
+
   function getStatus(user) {
     const isDeleted = user?.isDeleted === true;
     const isInactive = user?.isActive === false;
@@ -325,7 +350,7 @@ export default function RoleUsersManager({
                 </Link>
                 <button
                   type="button"
-                  onClick={() => handleDeleteUser(user.id, false)}
+                  onClick={() => openDeleteConfirm(user, false)}
                   disabled={actionLoadingId === user.id}
                   className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium text-white/85 hover:bg-white/10 disabled:opacity-60"
                 >
@@ -334,7 +359,7 @@ export default function RoleUsersManager({
                 {shouldShowPermanent ? (
                   <button
                     type="button"
-                    onClick={() => handleDeleteUser(user.id, true)}
+                    onClick={() => openDeleteConfirm(user, true)}
                     disabled={actionLoadingId === user.id}
                     className="rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-60"
                   >
@@ -518,6 +543,49 @@ export default function RoleUsersManager({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteConfirm ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#071a2f]/70 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-user-title"
+            className="w-full max-w-md rounded-2xl border border-white/15 bg-[#0f2a46] p-6 shadow-xl"
+          >
+            <h3 id="delete-user-title" className="text-lg font-semibold text-white">
+              Confirmar eliminacion
+            </h3>
+            <p className="mt-2 text-sm text-white/80">
+              {deleteConfirm.permanent
+                ? `Vas a eliminar de manera permanente a ${deleteConfirm.username}. Esta accion no se puede deshacer.`
+                : `Vas a eliminar a ${deleteConfirm.username}. Podras eliminarlo de manera permanente mas adelante.`}
+            </p>
+
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeDeleteConfirm}
+                disabled={actionLoadingId === deleteConfirm.userId}
+                className="rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white/85 hover:bg-white/10 disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteUser}
+                disabled={actionLoadingId === deleteConfirm.userId}
+                className="rounded-lg border border-rose-300/40 bg-rose-900/35 px-4 py-2 text-sm font-semibold text-rose-100 hover:bg-rose-900/50 disabled:opacity-60"
+              >
+                {actionLoadingId === deleteConfirm.userId
+                  ? "Eliminando..."
+                  : deleteConfirm.permanent
+                    ? "Eliminar permanentemente"
+                    : "Confirmar eliminacion"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

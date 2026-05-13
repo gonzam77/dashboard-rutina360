@@ -6,6 +6,8 @@ import { parseSessionUserCookie } from "@/lib/session";
 const MUSCLE_GROUPS_URL = "https://rutina360-server.onrender.com/muscleGroup";
 const EXERCISES_URL = "https://rutina360-server.onrender.com/ejercice";
 const ROUTINES_URL = "https://rutina360-server.onrender.com/routine";
+const ASSIGNMENTS_URL = "https://rutina360-server.onrender.com/routine/assign";
+const SUPER_ADMIN_OWNER_ID = 1;
 
 function normalizeRoleName(value) {
   return String(value || "").trim().toLowerCase();
@@ -14,6 +16,11 @@ function normalizeRoleName(value) {
 function isGymOrDescendantRole(roleName) {
   const normalized = normalizeRoleName(roleName);
   return ["gym", "gimnasio", "coach", "athlete", "atleta"].includes(normalized);
+}
+
+function isCoachOrAthleteRole(roleName) {
+  const normalized = normalizeRoleName(roleName);
+  return ["coach", "athlete", "atleta"].includes(normalized);
 }
 
 async function fetchJson(url, fallbackMessage, token) {
@@ -81,7 +88,7 @@ async function createExercise(formData) {
     throw new Error("El nombre del ejercicio es obligatorio.");
   }
 
-  if (isGymOrDescendantRole(roleName)) {
+  if (isCoachOrAthleteRole(roleName)) {
     throw new Error("Tu rol no tiene permisos para crear ejercicios.");
   }
 
@@ -161,32 +168,126 @@ function getRoutineUsageByExerciseId(routines) {
   return usage;
 }
 
+function isGymRoleName(value) {
+  const normalized = normalizeRoleName(value);
+  return normalized === "gym" || normalized === "gimnasio";
+}
+
+function isActiveAssignment(assignment) {
+  return assignment?.isDeleted !== true && assignment?.isActive !== false;
+}
+
+function getExerciseOwnerId(exercise) {
+  const candidates = [
+    exercise?.idOwner,
+    exercise?.idUser,
+    exercise?.idAdminOwner,
+    exercise?.createdBy,
+    exercise?.userId,
+    exercise?.creator?.id,
+    exercise?.User?.id,
+    exercise?.user?.id,
+    exercise?.adminOwner?.id,
+  ];
+
+  for (const candidate of candidates) {
+    const id = Number(candidate);
+    if (Number.isFinite(id) && id > 0) {
+      return id;
+    }
+  }
+
+  return null;
+}
+
+function getAssignedRoutineUsageByExerciseId(routines, assignments) {
+  const usage = new Map();
+  const routinesById = new Map(
+    (Array.isArray(routines) ? routines : [])
+      .filter((routine) => Number.isFinite(Number(routine?.id)))
+      .map((routine) => [String(routine.id), routine])
+  );
+
+  for (const assignment of Array.isArray(assignments) ? assignments : []) {
+    if (!isActiveAssignment(assignment)) {
+      continue;
+    }
+
+    const routineId = assignment?.idRoutine || assignment?.Routine?.id;
+    if (!routineId) {
+      continue;
+    }
+
+    const routine = assignment?.Routine || routinesById.get(String(routineId));
+    if (!routine) {
+      continue;
+    }
+
+    const exerciseIds = new Set();
+    for (const item of getRoutineExercises(routine)) {
+      const exerciseId = getRoutineExerciseId(item);
+      if (exerciseId) {
+        exerciseIds.add(String(exerciseId));
+      }
+    }
+
+    for (const exerciseId of exerciseIds) {
+      usage.set(exerciseId, (usage.get(exerciseId) || 0) + 1);
+    }
+  }
+
+  return usage;
+}
+
 export default async function CatalogoEjerciciosPage() {
   let muscleGroups = [];
   let exercises = [];
   let routineUsageByExerciseId = new Map();
+  let assignedRoutineUsageByExerciseId = new Map();
   let errorMessage = "";
   let routineUsageWarning = "";
   let routineUsageVerified = false;
+  let canManageMuscleCatalog = true;
   let canManageExerciseCatalog = true;
+  let viewerUserId = null;
+  let viewerIsGym = false;
 
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
     const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
     const roleName = sessionUser?.roleName || "";
-    canManageExerciseCatalog = !isGymOrDescendantRole(roleName);
+    viewerUserId = Number(sessionUser?.id) || null;
+    viewerIsGym = isGymRoleName(roleName);
+    canManageMuscleCatalog = !isGymOrDescendantRole(roleName);
+    canManageExerciseCatalog = !isCoachOrAthleteRole(roleName);
     const [muscleGroupsResult, exercisesResult] = await Promise.all([
       fetchJson(MUSCLE_GROUPS_URL, "No se pudieron cargar los grupos musculares.", token),
       fetchJson(EXERCISES_URL, "No se pudieron cargar los ejercicios.", token),
     ]);
 
     muscleGroups = muscleGroupsResult;
-    exercises = exercisesResult;
+    exercises = viewerIsGym
+      ? exercisesResult.filter((exercise) => {
+          const ownerId = getExerciseOwnerId(exercise);
+          if (!ownerId) {
+            return false;
+          }
+
+          return (
+            Number(ownerId) === Number(SUPER_ADMIN_OWNER_ID) ||
+            Number(ownerId) === Number(viewerUserId)
+          );
+        })
+      : exercisesResult;
 
     try {
-      const routines = await fetchJson(ROUTINES_URL, "No se pudieron cargar las rutinas.", token);
+      const [routines, assignments] = await Promise.all([
+        fetchJson(ROUTINES_URL, "No se pudieron cargar las rutinas.", token),
+        fetchJson(ASSIGNMENTS_URL, "No se pudieron cargar las asignaciones de rutinas.", token),
+      ]);
       routineUsageByExerciseId = getRoutineUsageByExerciseId(routines);
+      assignedRoutineUsageByExerciseId = getAssignedRoutineUsageByExerciseId(routines, assignments);
       routineUsageVerified = true;
     } catch (error) {
       routineUsageWarning = error.message;
@@ -202,7 +303,7 @@ export default async function CatalogoEjerciciosPage() {
         <p className="mt-3 text-white/80">
           Grupos musculares y ejercicios asociados del sistema.
         </p>
-        {canManageExerciseCatalog ? (
+        {canManageMuscleCatalog ? (
           <form action={createMuscleGroup} className="mt-6 flex flex-col gap-3 sm:flex-row">
             <input
               type="text"
@@ -266,6 +367,20 @@ export default async function CatalogoEjerciciosPage() {
                   <ul className="mt-4 space-y-2">
                     {groupExercises.map((exercise) => {
                       const routineCount = routineUsageByExerciseId.get(String(exercise.id)) || 0;
+                      const assignedRoutineCount =
+                        assignedRoutineUsageByExerciseId.get(String(exercise.id)) || 0;
+                      const exerciseOwnerId = getExerciseOwnerId(exercise);
+                      const isOwner =
+                        !viewerIsGym ||
+                        (Number.isFinite(Number(exerciseOwnerId)) &&
+                          Number(exerciseOwnerId) === Number(viewerUserId));
+                      const canDeleteByAssignment = assignedRoutineCount === 0;
+                      const canDeleteExercise = isOwner && canDeleteByAssignment;
+                      const deleteBlockedReason = !isOwner
+                        ? "Solo puedes eliminar ejercicios creados por tu gimnasio."
+                        : !canDeleteByAssignment
+                          ? "No se puede eliminar: el ejercicio esta en una rutina asignada a un atleta."
+                          : "";
 
                       return (
                         <li
@@ -279,6 +394,11 @@ export default async function CatalogoEjerciciosPage() {
                                 Vinculado a {routineCount} rutina{routineCount === 1 ? "" : "s"}
                               </p>
                             ) : null}
+                            {routineUsageVerified && assignedRoutineCount > 0 ? (
+                              <p className="mt-1 text-xs text-rose-200">
+                                Presente en {assignedRoutineCount} rutina{assignedRoutineCount === 1 ? "" : "s"} asignada{assignedRoutineCount === 1 ? "" : "s"} a atletas
+                              </p>
+                            ) : null}
                           </div>
                           {canManageExerciseCatalog ? (
                             <ExerciseDeleteButton
@@ -286,6 +406,8 @@ export default async function CatalogoEjerciciosPage() {
                               exerciseName={exercise.name}
                               routineCount={routineCount}
                               routineUsageVerified={routineUsageVerified}
+                              canDelete={canDeleteExercise}
+                              blockedReason={deleteBlockedReason}
                             />
                           ) : null}
                         </li>

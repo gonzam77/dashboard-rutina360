@@ -29,12 +29,18 @@ export default function ExerciseDeleteButton({
   exerciseName,
   routineCount,
   routineUsageVerified,
+  canDelete = true,
+  blockedReason = "",
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function handleDelete() {
+    if (!canDelete) {
+      return;
+    }
+
     const normalizedRoutineCount = Number(routineCount) || 0;
     const hasRoutineLinks = routineUsageVerified && normalizedRoutineCount > 0;
     const confirmationMessage = hasRoutineLinks
@@ -74,9 +80,15 @@ export default function ExerciseDeleteButton({
       <button
         type="button"
         onClick={handleDelete}
-        disabled={loading}
+        disabled={loading || !canDelete}
         aria-label={`Eliminar ejercicio ${exerciseName}`}
-        title={loading ? "Eliminando ejercicio" : "Eliminar ejercicio"}
+        title={
+          !canDelete
+            ? blockedReason || "No puedes eliminar este ejercicio."
+            : loading
+              ? "Eliminando ejercicio"
+              : "Eliminar ejercicio"
+        }
         className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300/40 bg-rose-900/20 text-rose-100 transition hover:bg-rose-900/35 hover:text-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <TrashIcon />
