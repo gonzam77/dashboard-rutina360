@@ -131,11 +131,28 @@ function getLevelAccent(level) {
   return accents[level % accents.length];
 }
 
-function RoleNode({ role, level, childrenByParent, usersByRoleId }) {
+function RoleNode({ role, level, childrenByParent, usersByRoleId, showInlineUsers = true }) {
   const users = usersByRoleId.get(Number(role.id)) || [];
   const children = childrenByParent.get(Number(role.id)) || [];
   const totalInSubtree = countUsersInSubtree(role.id, usersByRoleId, childrenByParent);
   const accent = getLevelAccent(level);
+  const roleName = String(role?.name || "").trim().toLowerCase();
+  const isAthleteRole = roleName === "athlete" || roleName === "atleta";
+  const visibleUsers = isAthleteRole ? users.slice(0, 10) : users;
+  const hiddenUsers = isAthleteRole ? users.slice(10) : [];
+
+  function renderUserCard(user) {
+    return (
+      <Link
+        key={user.id}
+        href={`/inicio/roles-usuarios/${role.id}/${user.id}`}
+        className="rounded-lg border border-white/15 bg-[#0f2a46] px-3 py-2 text-sm text-white/85 transition hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-[#153452] hover:shadow-sm"
+      >
+        <span className="font-medium text-white">{user.username || `Usuario #${user.id}`}</span>
+        <span className="ml-2 text-xs text-white/65">{user.email || "Sin email"}</span>
+      </Link>
+    );
+  }
 
   return (
     <article className="group relative overflow-hidden rounded-3xl border border-white/15 bg-[#17385a] p-5 shadow-[0_8px_24px_rgba(0,0,0,0.28)] transition duration-300 hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-[#1b426a] hover:shadow-lg">
@@ -157,18 +174,22 @@ function RoleNode({ role, level, childrenByParent, usersByRoleId }) {
         </Link>
       </div>
 
-      {users.length > 0 ? (
-        <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
-          {users.map((user) => (
-            <Link
-              key={user.id}
-              href={`/inicio/roles-usuarios/${role.id}/${user.id}`}
-              className="rounded-lg border border-white/15 bg-[#0f2a46] px-3 py-2 text-sm text-white/85 transition hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-[#153452] hover:shadow-sm"
-            >
-              <span className="font-medium text-white">{user.username || `Usuario #${user.id}`}</span>
-              <span className="ml-2 text-xs text-white/65">{user.email || "Sin email"}</span>
-            </Link>
-          ))}
+      {showInlineUsers && users.length > 0 ? (
+        <div className="mt-4 space-y-3">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {visibleUsers.map((user) => renderUserCard(user))}
+          </div>
+          {hiddenUsers.length > 0 ? (
+            <details className="group flex flex-col gap-2">
+              <div className="order-1 grid grid-cols-1 gap-2 md:grid-cols-2">
+                {hiddenUsers.map((user) => renderUserCard(user))}
+              </div>
+              <summary className="order-2 cursor-pointer select-none rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20">
+                <span className="group-open:hidden">Ver mas ({hiddenUsers.length})</span>
+                <span className="hidden group-open:inline">Ver menos</span>
+              </summary>
+            </details>
+          ) : null}
         </div>
       ) : null}
 
@@ -181,6 +202,7 @@ function RoleNode({ role, level, childrenByParent, usersByRoleId }) {
               level={level + 1}
               childrenByParent={childrenByParent}
               usersByRoleId={usersByRoleId}
+              showInlineUsers={showInlineUsers}
             />
           ))}
         </div>
@@ -196,14 +218,21 @@ export default async function RolesUsuariosPage() {
   let usersByRoleId = new Map();
   let allRoles = [];
   let canCreateRoles = false;
+  let showInlineUsers = true;
+  let roleKey = "unknown";
+  let viewerRoleId = null;
+  let viewerUserId = null;
 
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;
     const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
-    const roleKey = normalizeRoleKey(sessionUser?.roleName);
+    roleKey = normalizeRoleKey(sessionUser?.roleName);
     const viewerId = Number(sessionUser?.id) || null;
+    viewerUserId = viewerId;
+    viewerRoleId = Number(sessionUser?.idRole) || null;
     canCreateRoles = roleKey === "super_admin" && viewerId === 1;
+    showInlineUsers = roleKey !== "super_admin";
 
     const [roles, users] = await Promise.all([getRoles(token), getUsers(token)]);
     allRoles = roles;
@@ -289,9 +318,35 @@ export default async function RolesUsuariosPage() {
               level={0}
               childrenByParent={childrenByParent}
               usersByRoleId={usersByRoleId}
+              showInlineUsers={showInlineUsers}
             />
           ))}
         </div>
+      ) : null}
+
+      {!errorMessage && !showInlineUsers ? (
+        <section className="rounded-3xl border border-white/15 bg-[#17385a] p-5 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+          <h2 className="text-base font-semibold text-white">Listados especializados</h2>
+          <p className="mt-1 text-sm text-white/75">
+            Para mantener esta vista liviana, los usuarios se gestionan desde modulos dedicados.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href="/inicio/atletas"
+              className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
+            >
+              Ver atletas del gym
+            </Link>
+            {roleKey === "coach" && viewerRoleId && viewerUserId ? (
+              <Link
+                href={`/inicio/roles-usuarios/${viewerRoleId}/${viewerUserId}`}
+                className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
+              >
+                Ir a mi perfil de coach
+              </Link>
+            ) : null}
+          </div>
+        </section>
       ) : null}
     </section>
   );
