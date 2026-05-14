@@ -346,6 +346,57 @@ export default async function CatalogoEjerciciosPage() {
             const groupExercises = exercises.filter(
               (exercise) => String(exercise.idMuscleGroup) === String(group.id)
             );
+            const visibleExercises = groupExercises.slice(0, 5);
+            const hiddenExercises = groupExercises.slice(5);
+
+            const renderExerciseRow = (exercise) => {
+              const routineCount = routineUsageByExerciseId.get(String(exercise.id)) || 0;
+              const assignedRoutineCount =
+                assignedRoutineUsageByExerciseId.get(String(exercise.id)) || 0;
+              const exerciseOwnerId = getExerciseOwnerId(exercise);
+              const isOwner =
+                !viewerIsGym ||
+                (Number.isFinite(Number(exerciseOwnerId)) &&
+                  Number(exerciseOwnerId) === Number(viewerUserId));
+              const canDeleteByAssignment = assignedRoutineCount === 0;
+              const canDeleteExercise = isOwner && canDeleteByAssignment;
+              const deleteBlockedReason = !isOwner
+                ? "Solo puedes eliminar ejercicios creados por tu gimnasio."
+                : !canDeleteByAssignment
+                  ? "No se puede eliminar: el ejercicio esta en una rutina asignada a un atleta."
+                  : "";
+
+              return (
+                <li
+                  key={exercise.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-white/15 bg-[#0f2a46] px-3 py-2 text-sm text-white/90"
+                >
+                  <div className="min-w-0">
+                    <p className="break-words font-medium">{exercise.name}</p>
+                    {routineUsageVerified && routineCount > 0 ? (
+                      <p className="mt-1 text-xs text-amber-200">
+                        Vinculado a {routineCount} rutina{routineCount === 1 ? "" : "s"}
+                      </p>
+                    ) : null}
+                    {routineUsageVerified && assignedRoutineCount > 0 ? (
+                      <p className="mt-1 text-xs text-rose-200">
+                        Presente en {assignedRoutineCount} rutina{assignedRoutineCount === 1 ? "" : "s"} asignada{assignedRoutineCount === 1 ? "" : "s"} a atletas
+                      </p>
+                    ) : null}
+                  </div>
+                  {canManageExerciseCatalog ? (
+                    <ExerciseDeleteButton
+                      exerciseId={exercise.id}
+                      exerciseName={exercise.name}
+                      routineCount={routineCount}
+                      routineUsageVerified={routineUsageVerified}
+                      canDelete={canDeleteExercise}
+                      blockedReason={deleteBlockedReason}
+                    />
+                  ) : null}
+                </li>
+              );
+            };
 
             return (
               <article
@@ -364,56 +415,18 @@ export default async function CatalogoEjerciciosPage() {
                     Este grupo muscular todavia no tiene ejercicios cargados.
                   </p>
                 ) : (
-                  <ul className="mt-4 space-y-2">
-                    {groupExercises.map((exercise) => {
-                      const routineCount = routineUsageByExerciseId.get(String(exercise.id)) || 0;
-                      const assignedRoutineCount =
-                        assignedRoutineUsageByExerciseId.get(String(exercise.id)) || 0;
-                      const exerciseOwnerId = getExerciseOwnerId(exercise);
-                      const isOwner =
-                        !viewerIsGym ||
-                        (Number.isFinite(Number(exerciseOwnerId)) &&
-                          Number(exerciseOwnerId) === Number(viewerUserId));
-                      const canDeleteByAssignment = assignedRoutineCount === 0;
-                      const canDeleteExercise = isOwner && canDeleteByAssignment;
-                      const deleteBlockedReason = !isOwner
-                        ? "Solo puedes eliminar ejercicios creados por tu gimnasio."
-                        : !canDeleteByAssignment
-                          ? "No se puede eliminar: el ejercicio esta en una rutina asignada a un atleta."
-                          : "";
-
-                      return (
-                        <li
-                          key={exercise.id}
-                          className="flex items-center justify-between gap-3 rounded-lg border border-white/15 bg-[#0f2a46] px-3 py-2 text-sm text-white/90"
-                        >
-                          <div className="min-w-0">
-                            <p className="break-words font-medium">{exercise.name}</p>
-                            {routineUsageVerified && routineCount > 0 ? (
-                              <p className="mt-1 text-xs text-amber-200">
-                                Vinculado a {routineCount} rutina{routineCount === 1 ? "" : "s"}
-                              </p>
-                            ) : null}
-                            {routineUsageVerified && assignedRoutineCount > 0 ? (
-                              <p className="mt-1 text-xs text-rose-200">
-                                Presente en {assignedRoutineCount} rutina{assignedRoutineCount === 1 ? "" : "s"} asignada{assignedRoutineCount === 1 ? "" : "s"} a atletas
-                              </p>
-                            ) : null}
-                          </div>
-                          {canManageExerciseCatalog ? (
-                            <ExerciseDeleteButton
-                              exerciseId={exercise.id}
-                              exerciseName={exercise.name}
-                              routineCount={routineCount}
-                              routineUsageVerified={routineUsageVerified}
-                              canDelete={canDeleteExercise}
-                              blockedReason={deleteBlockedReason}
-                            />
-                          ) : null}
-                        </li>
-                      );
-                    })}
-                  </ul>
+                  <div className="mt-4 space-y-3">
+                    <ul className="space-y-2">{visibleExercises.map(renderExerciseRow)}</ul>
+                    {hiddenExercises.length > 0 ? (
+                      <details className="group flex flex-col gap-2">
+                        <ul className="order-1 space-y-2">{hiddenExercises.map(renderExerciseRow)}</ul>
+                        <summary className="order-2 cursor-pointer select-none rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20">
+                          <span className="group-open:hidden">Ver mas ({hiddenExercises.length})</span>
+                          <span className="hidden group-open:inline">Ver menos</span>
+                        </summary>
+                      </details>
+                    ) : null}
+                  </div>
                 )}
 
                 {canManageExerciseCatalog ? (
