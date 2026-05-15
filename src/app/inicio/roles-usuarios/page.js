@@ -332,7 +332,7 @@ export default async function RolesUsuariosPage() {
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
-              href="/inicio/atletas"
+              href="/inicio/roles-usuarios/4"
               className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
             >
               Ver atletas del gym

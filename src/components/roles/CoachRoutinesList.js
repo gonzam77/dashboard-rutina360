@@ -3,15 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import CoachRoutineForm from "@/components/roles/CoachRoutineForm";
 import RoutineEditButton from "@/components/roles/RoutineEditButton";
 
-export default function CoachRoutinesList({ roleId, userId, coachId, routines, viewerRoleKey = "unknown" }) {
+export default function CoachRoutinesList({ roleId, userId, routines }) {
   const router = useRouter();
   const [loadingRoutineId, setLoadingRoutineId] = useState(null);
   const [error, setError] = useState("");
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const canCreateRoutine = viewerRoleKey === "coach" || viewerRoleKey === "admin";
 
   async function handleDeleteRoutine(routineId) {
     setLoadingRoutineId(routineId);
@@ -38,15 +35,6 @@ export default function CoachRoutinesList({ roleId, userId, coachId, routines, v
     <div className="mt-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-white/75">Gestiona las rutinas creadas para este coach.</p>
-        {canCreateRoutine ? (
-          <button
-            type="button"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
-          >
-            Crear rutina
-          </button>
-        ) : null}
       </div>
       {error ? <p className="text-sm text-rose-200">{error}</p> : null}
       {routines.length === 0 ? (
@@ -80,33 +68,6 @@ export default function CoachRoutinesList({ roleId, userId, coachId, routines, v
           ))}
         </div>
       )}
-
-      {isCreateModalOpen && canCreateRoutine ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
-        >
-          <div
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mb-4 flex items-center justify-between gap-2">
-              <h3 className="text-lg font-semibold text-slate-900">Crear rutina</h3>
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(false)}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Cerrar
-              </button>
-            </div>
-            <CoachRoutineForm
-              coachId={coachId}
-              isInModal
-              onSaved={() => setIsCreateModalOpen(false)}
-            />
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

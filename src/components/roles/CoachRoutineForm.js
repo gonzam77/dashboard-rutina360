@@ -164,8 +164,8 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
   }
 
   return (
-    <section className={isInModal ? "" : "rounded-2xl bg-white p-6 shadow-sm"}>
-      {!isInModal ? <h2 className="text-lg font-semibold text-slate-900">Crear rutina para este coach</h2> : null}
+    <section className={isInModal ? "" : "rounded-2xl border border-white/15 bg-[#0f2a46] p-6 shadow-sm"}>
+      {!isInModal ? <h2 className="text-lg font-semibold text-white">Crear rutina para este coach</h2> : null}
       <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={handleSubmit}>
         <input
           required
@@ -173,7 +173,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
           placeholder="Nombre de la rutina"
           value={routineName}
           onChange={(event) => setRoutineName(event.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2 text-black"
+          className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55 md:col-span-2"
         />
         <input
           required
@@ -182,7 +182,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
           placeholder="Orden"
           value={routineOrder}
           onChange={(event) => setRoutineOrder(event.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-black"
+          className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55"
         />
         <input
           required
@@ -191,20 +191,20 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
           placeholder="Tiempo (minutos)"
           value={routineTime}
           onChange={(event) => setRoutineTime(event.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-black"
+          className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55"
         />
         <div className="md:col-span-2">
-          <p className="mb-2 text-sm font-medium text-slate-800">Agregar ejercicios (uno por uno)</p>
-          <div className="flex flex-col rounded-lg border border-slate-200 p-3">
+          <p className="mb-2 text-sm font-medium text-white/85">Agregar ejercicios (uno por uno)</p>
+          <div className="flex flex-col rounded-lg border border-white/15 bg-[#17385a] p-3">
             <div className="grid gap-3 md:grid-cols-2">
               <select
                 value={draftExercise.muscleGroupId}
                 onChange={(event) => updateDraftExercise("muscleGroupId", event.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 text-black"
+                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white"
               >
-                <option value="" disabled className="bg-white text-slate-900">Seleccionar grupo muscular</option>
+                <option value="" disabled className="bg-[#0f2a46] text-white">Seleccionar grupo muscular</option>
                 {muscleGroups.map((group) => (
-                  <option key={group.id} value={group.id} className="bg-white text-slate-900">
+                  <option key={group.id} value={group.id} className="bg-[#0f2a46] text-white">
                     {group.name}
                   </option>
                 ))}
@@ -214,13 +214,13 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
                 value={draftExercise.idEjercice}
                 onChange={(event) => updateDraftExercise("idEjercice", event.target.value)}
                 disabled={!draftExercise.muscleGroupId}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
+                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white disabled:bg-[#0b223a] disabled:text-white/45"
               >
-                <option value="" disabled className="bg-white text-slate-900">
+                <option value="" disabled className="bg-[#0f2a46] text-white">
                   {draftExercise.muscleGroupId ? "Seleccionar ejercicio" : "Primero selecciona grupo muscular"}
                 </option>
                 {(exercisesByGroup.get(String(draftExercise.muscleGroupId)) || []).map((exercise) => (
-                  <option key={exercise.id} value={exercise.id} className="bg-white text-slate-900">
+                  <option key={exercise.id} value={exercise.id} className="bg-[#0f2a46] text-white">
                     {exercise.name}
                   </option>
                 ))}
@@ -232,7 +232,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
                 placeholder="Cantidad de series"
                 value={draftExercise.series}
                 onChange={(event) => updateDraftExercise("series", event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-black"
+                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white placeholder:text-white/55"
               />
 
               <input
@@ -241,9 +241,8 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
                 placeholder="Descanso entre series (min)"
                 value={draftExercise.rest}
                 onChange={(event) => updateDraftExercise("rest", event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-black"
+                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white placeholder:text-white/55"
               />
-
             </div>
             <div className="mt-auto space-y-3 pt-3">
               <input
@@ -251,12 +250,12 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
                 placeholder="Comentario (opcional)"
                 value={draftExercise.comments}
                 onChange={(event) => updateDraftExercise("comments", event.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-black"
+                className="w-full rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white placeholder:text-white/55"
               />
               <button
                 type="button"
                 onClick={addConfirmedExercise}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-medium text-cyan-100 hover:bg-cyan-300/20"
               >
                 Confirmar ejercicio y agregar
               </button>
@@ -265,17 +264,17 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
 
           <div className="mt-3 space-y-2">
             {confirmedExercises.length === 0 ? (
-              <p className="text-sm text-slate-600">Todavia no hay ejercicios confirmados.</p>
+              <p className="text-sm text-white/70">Todavia no hay ejercicios confirmados.</p>
             ) : (
               confirmedExercises.map((item, index) => (
-                <div key={`confirmed-${index}`} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                  <p className="text-slate-700">
-                    #{index + 1} · Ejercicio ID {item.idEjercice} · Series {item.series} · Descanso {item.rest} min
+                <div key={`confirmed-${index}`} className="flex items-center justify-between rounded-lg border border-white/15 bg-[#17385a] px-3 py-2 text-sm">
+                  <p className="text-white/85">
+                    #{index + 1} - Ejercicio ID {item.idEjercice} - Series {item.series} - Descanso {item.rest} min
                   </p>
                   <button
                     type="button"
                     onClick={() => removeConfirmedExercise(index)}
-                    className="rounded-md border border-rose-300 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
+                    className="rounded-md border border-rose-300/45 bg-rose-900/25 px-2 py-1 text-xs font-medium text-rose-100 hover:bg-rose-900/35"
                   >
                     Quitar
                   </button>
@@ -287,13 +286,13 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
         <button
           type="submit"
           disabled={loading}
-          className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-800 disabled:opacity-60 md:col-span-2"
+          className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 font-medium text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60 md:col-span-2"
         >
           {loading ? "Creando rutina..." : "Crear rutina"}
         </button>
       </form>
-      {message ? <p className="mt-3 text-sm text-emerald-700">{message}</p> : null}
-      {error ? <p className="mt-3 text-sm text-rose-700">{error}</p> : null}
+      {message ? <p className="mt-3 text-sm text-cyan-100">{message}</p> : null}
+      {error ? <p className="mt-3 text-sm text-rose-200">{error}</p> : null}
     </section>
   );
 }

@@ -6,6 +6,7 @@ import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
 const USERS_URL = "https://rutina360-server.onrender.com/users";
 const USER_LINKS_URL = "https://rutina360-server.onrender.com/users/link";
+const ASSIGNMENTS_URL = "https://rutina360-server.onrender.com/routine/assign";
 
 async function getRoleById(roleId, token) {
   const response = await fetch(ROLES_URL, {
@@ -82,6 +83,22 @@ async function getUserLinks(token) {
   return Array.isArray(json?.data) ? json.data : [];
 }
 
+async function getRoutineAssignments(token) {
+  const response = await fetch(ASSIGNMENTS_URL, {
+    cache: "no-store",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const json = await response.json().catch(() => ({}));
+  return Array.isArray(json?.data) ? json.data : [];
+}
+
 
 function isAthleteRoleName(value) {
   return ["athlete", "atleta"].includes(String(value || "").trim().toLowerCase());
@@ -140,6 +157,7 @@ export default async function RolUsuariosDetallePage({ params }) {
   let coachRoleId = null;
   let gymOwners = [];
   let athleteCoachLabelsByUserId = {};
+  let athleteAssignedRoutinesCountByUserId = {};
 
   try {
     const cookieStore = await cookies();
@@ -148,12 +166,13 @@ export default async function RolUsuariosDetallePage({ params }) {
     roleKey = normalizeRoleKey(sessionUser?.roleName);
     const viewerId = Number(sessionUser?.id) || null;
 
-    const [roleResult, usersResult, allUsers, fetchedViewerUser, userLinks] = await Promise.all([
+    const [roleResult, usersResult, allUsers, fetchedViewerUser, userLinks, routineAssignments] = await Promise.all([
       getRoleById(roleId, token),
       getUsers(roleId, token),
       fetchUsersFrom(USERS_URL, token),
       getUserById(viewerId, token),
       getUserLinks(token),
+      getRoutineAssignments(token),
     ]);
     role = roleResult;
     viewerUser = fetchedViewerUser;
@@ -225,6 +244,31 @@ export default async function RolUsuariosDetallePage({ params }) {
           Array.from(labels).slice(0, 2),
         ])
       );
+
+      const routineIdsByAthleteId = new Map();
+      for (const assignment of Array.isArray(routineAssignments) ? routineAssignments : []) {
+        if (assignment?.isDeleted === true || assignment?.isActive === false) {
+          continue;
+        }
+
+        const athleteId = Number(assignment?.idAthlete || assignment?.athlete?.id);
+        const routineId = Number(assignment?.idRoutine || assignment?.Routine?.id);
+        if (!Number.isFinite(athleteId) || athleteId <= 0 || !Number.isFinite(routineId) || routineId <= 0) {
+          continue;
+        }
+
+        if (!routineIdsByAthleteId.has(String(athleteId))) {
+          routineIdsByAthleteId.set(String(athleteId), new Set());
+        }
+        routineIdsByAthleteId.get(String(athleteId)).add(String(routineId));
+      }
+
+      athleteAssignedRoutinesCountByUserId = Object.fromEntries(
+        Array.from(routineIdsByAthleteId.entries()).map(([athleteId, routineIds]) => [
+          athleteId,
+          routineIds.size,
+        ])
+      );
     }
   } catch (error) {
     errorMessage = error.message;
@@ -271,6 +315,7 @@ export default async function RolUsuariosDetallePage({ params }) {
           viewerRoleKey={roleKey}
           gymOwners={gymOwners}
           athleteCoachLabelsByUserId={athleteCoachLabelsByUserId}
+          athleteAssignedRoutinesCountByUserId={athleteAssignedRoutinesCountByUserId}
         />
       )}
     </section>

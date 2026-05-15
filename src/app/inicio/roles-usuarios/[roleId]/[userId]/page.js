@@ -510,9 +510,7 @@ export default async function UserProfilePage({ params, searchParams }) {
           <CoachRoutinesList
             roleId={roleId}
             userId={user.id}
-            coachId={user.id}
             routines={coachRoutines}
-            viewerRoleKey={viewerRoleKey}
           />
         </section>
       ) : null}

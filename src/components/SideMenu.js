@@ -13,13 +13,12 @@ const MENU_BY_ROLE = {
   admin: [
     { href: "/inicio", label: "Panel del gimnasio" },
     { href: "/inicio/roles-usuarios", label: "Coaches y atletas" },
-    { href: "/inicio/atletas", label: "Atletas del gym" },
     { href: "/inicio/rutinas-creadas", label: "Rutinas" },
     { href: "/inicio/catalogo-ejercicios", label: "Catalogo ejercicios" },
   ],
   coach: [
     { href: "/inicio", label: "Inicio" },
-    { href: "/inicio/atletas", label: "Atletas del gym" },
+    { href: "/inicio/roles-usuarios/4", label: "Atletas del gym" },
     { href: "/inicio/roles-usuarios", label: "Mi perfil" },
     { href: "/inicio/rutinas-creadas", label: "Rutinas" },
   ],

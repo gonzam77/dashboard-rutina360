@@ -11,6 +11,7 @@ export default function RoleUsersManager({
   viewerRoleKey = "unknown",
   gymOwners = [],
   athleteCoachLabelsByUserId = {},
+  athleteAssignedRoutinesCountByUserId = {},
 }) {
   const router = useRouter();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -338,6 +339,11 @@ export default function RoleUsersManager({
               {isAthleteRole ? (
                 <p className="mt-1 text-sm text-white/75">
                   Coach: {(athleteCoachLabelsByUserId?.[String(user.id)] || []).join(" · ") || "Sin coach asignado"}
+                </p>
+              ) : null}
+              {isAthleteRole ? (
+                <p className="mt-1 text-sm text-white/75">
+                  Rutinas asignadas: {Number(athleteAssignedRoutinesCountByUserId?.[String(user.id)] || 0)}
                 </p>
               ) : null}
 

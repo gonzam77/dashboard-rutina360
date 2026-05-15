@@ -21,6 +21,7 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedAthleteId, setSelectedAthleteId] = useState("");
+  const [athleteSearch, setAthleteSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -35,6 +36,22 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
   const [weight, setWeight] = useState("");
   const [goal, setGoal] = useState("");
   const [weeklyAvailability, setWeeklyAvailability] = useState("");
+  const normalizedAthleteSearch = athleteSearch.trim().toLowerCase();
+  const filteredAthletes = athletes.filter((athlete) => {
+    if (!normalizedAthleteSearch) {
+      return true;
+    }
+
+    const usernameLabel = String(athlete?.username || "").toLowerCase();
+    const emailLabel = String(athlete?.email || "").toLowerCase();
+    const idLabel = String(athlete?.id || "").toLowerCase();
+
+    return (
+      usernameLabel.includes(normalizedAthleteSearch) ||
+      emailLabel.includes(normalizedAthleteSearch) ||
+      idLabel.includes(normalizedAthleteSearch)
+    );
+  });
 
   function resetCreateForm() {
     setDni("");
@@ -156,6 +173,7 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
             onClick={() => {
               setError("");
               setMessage("");
+              setAthleteSearch("");
               setIsAssignModalOpen(true);
             }}
             className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
@@ -191,7 +209,10 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
               <h3 className="text-lg font-semibold text-white">Asignar atleta existente</h3>
               <button
                 type="button"
-                onClick={() => setIsAssignModalOpen(false)}
+                onClick={() => {
+                  setAthleteSearch("");
+                  setIsAssignModalOpen(false);
+                }}
                 className="rounded-lg border border-white/20 px-3 py-1.5 text-sm font-medium text-white/85 hover:bg-white/10"
               >
                 Cerrar
@@ -203,6 +224,17 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
             ) : (
               <form className="space-y-3" onSubmit={handleAssign}>
                 <label className="block text-sm text-white/85">
+                  Buscar atleta
+                  <input
+                    type="text"
+                    value={athleteSearch}
+                    onChange={(event) => setAthleteSearch(event.target.value)}
+                    placeholder="Buscar por nombre, email o ID"
+                    className="mt-1 w-full rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55"
+                  />
+                </label>
+
+                <label className="block text-sm text-white/85">
                   Atleta
                   <select
                     required
@@ -211,13 +243,17 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
                     className="mt-1 w-full rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white"
                   >
                     <option value="" disabled>Seleccionar atleta</option>
-                    {athletes.map((athlete) => (
+                    {filteredAthletes.map((athlete) => (
                       <option key={athlete.id} value={athlete.id}>
                         {athlete.username || `Atleta #${athlete.id}`} (ID {athlete.id})
                       </option>
                     ))}
                   </select>
                 </label>
+
+                {filteredAthletes.length === 0 ? (
+                  <p className="text-sm text-amber-100">No se encontraron atletas con esa busqueda.</p>
+                ) : null}
 
                 <button
                   type="submit"
