@@ -31,6 +31,7 @@ export default function RoleUsersManager({
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [gymFilterId, setGymFilterId] = useState("all");
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const isAthleteRole = ["athlete", "atleta"].includes(String(roleName).trim().toLowerCase());
@@ -40,6 +41,10 @@ export default function RoleUsersManager({
   const requiresPersonalData = !isAdminRole && !isGymRole;
   const requiresDni = isAthleteRole || isCoachRole;
   const shouldShowUserFilters = isAthleteRole || isCoachRole;
+  const shouldShowGymFilter =
+    viewerRoleKey === "super_admin" &&
+    (isAthleteRole || isCoachRole) &&
+    gymOwners.length > 0;
   const requiresGymOwnerSelection = viewerRoleKey === "super_admin" && (isAthleteRole || isCoachRole);
   const [selectedGymOwnerId, setSelectedGymOwnerId] = useState("");
   const gymOwnersById = new Map(
@@ -224,14 +229,26 @@ export default function RoleUsersManager({
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
     return users.filter((user) => {
+      const gymLabel = getCoachGymLabel(user).toLowerCase();
       const matchesSearch =
         !normalizedSearch ||
         String(user?.username || "").toLowerCase().includes(normalizedSearch) ||
         String(user?.dni || "").toLowerCase().includes(normalizedSearch) ||
-        String(user?.email || "").toLowerCase().includes(normalizedSearch);
+        String(user?.email || "").toLowerCase().includes(normalizedSearch) ||
+        gymLabel.includes(normalizedSearch);
 
       if (!matchesSearch) {
         return false;
+      }
+
+      if (shouldShowGymFilter && gymFilterId !== "all") {
+        const userOwnerId =
+          Number(user?.idAdminOwner) ||
+          Number(user?.adminOwner?.id) ||
+          null;
+        if (Number(userOwnerId) !== Number(gymFilterId)) {
+          return false;
+        }
       }
 
       if (statusFilter === "all") {
@@ -252,7 +269,7 @@ export default function RoleUsersManager({
 
       return true;
     });
-  }, [searchTerm, statusFilter, users]);
+  }, [searchTerm, statusFilter, users, shouldShowGymFilter, gymFilterId]);
 
   return (
     <div className="space-y-6">
@@ -290,9 +307,25 @@ export default function RoleUsersManager({
               type="text"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Buscar por DNI, username o email"
-              className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-sm text-white placeholder:text-white/55 md:col-span-2"
+              placeholder="Buscar por DNI, username, email o gym"
+              className={`rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-sm text-white placeholder:text-white/55 ${
+                shouldShowGymFilter ? "md:col-span-1" : "md:col-span-2"
+              }`}
             />
+            {shouldShowGymFilter ? (
+              <select
+                value={gymFilterId}
+                onChange={(event) => setGymFilterId(event.target.value)}
+                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-sm text-white"
+              >
+                <option value="all">Todos los gyms</option>
+                {gymOwners.map((owner) => (
+                  <option key={owner.id} value={owner.id}>
+                    {owner.username || owner.email || `Gym #${owner.id}`}
+                  </option>
+                ))}
+              </select>
+            ) : null}
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
