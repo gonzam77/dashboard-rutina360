@@ -170,7 +170,7 @@ function RoleNode({ role, level, childrenByParent, usersByRoleId, showInlineUser
           href={`/inicio/roles-usuarios/${role.id}`}
           className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20 hover:shadow-sm"
         >
-          Gestionar rol
+          Gestionar
         </Link>
       </div>
 
