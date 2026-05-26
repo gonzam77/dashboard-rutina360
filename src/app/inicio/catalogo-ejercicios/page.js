@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import ExerciseDeleteButton from "@/components/catalog/ExerciseDeleteButton";
+import { getServerAccessToken } from "@/lib/auth-service";
 import { parseSessionUserCookie } from "@/lib/session";
 
 const MUSCLE_GROUPS_URL = "https://rutina360-server.onrender.com/muscleGroup";
@@ -44,7 +45,7 @@ async function createMuscleGroup(formData) {
 
   const name = String(formData.get("name") || "").trim();
   const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
+  const token = await getServerAccessToken();
   const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
   const roleName = sessionUser?.roleName || "";
 
@@ -80,7 +81,7 @@ async function createExercise(formData) {
   const name = String(formData.get("name") || "").trim();
   const idMuscleGroup = Number(formData.get("idMuscleGroup"));
   const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
+  const token = await getServerAccessToken();
   const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
   const roleName = sessionUser?.roleName || "";
 
@@ -254,7 +255,7 @@ export default async function CatalogoEjerciciosPage() {
 
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await getServerAccessToken();
     const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
     const roleName = sessionUser?.roleName || "";
     viewerUserId = Number(sessionUser?.id) || null;

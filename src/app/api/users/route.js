@@ -1,5 +1,6 @@
-﻿import { cookies } from "next/headers";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getServerAccessToken } from "@/lib/auth-service";
 
 const USERS_URL = "https://rutina360-server.onrender.com/users";
 const ROLES_URL = "https://rutina360-server.onrender.com/rol";
@@ -71,7 +72,7 @@ async function fetchList(url, token) {
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await getServerAccessToken();
     const body = await request.json();
 
     const username = body?.username?.trim().toUpperCase();

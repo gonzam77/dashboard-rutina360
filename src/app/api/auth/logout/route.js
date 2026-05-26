@@ -1,10 +1,8 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { callBackendLogoutCurrentSession, clearAuthCookies } from "@/lib/auth-service";
 
 export async function POST(request) {
-  const cookieStore = await cookies();
-  cookieStore.delete("token");
-  cookieStore.delete("session_user");
-
+  await callBackendLogoutCurrentSession();
+  await clearAuthCookies();
   return NextResponse.redirect(new URL("/login", request.url));
 }

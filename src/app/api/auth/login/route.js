@@ -1,17 +1,8 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { firstNonEmptyString } from "@/lib/session";
+import { parseLoginResponseAndPersist } from "@/lib/auth-service";
 
 const AUTH_URL = "https://rutina360-server.onrender.com/users/auth";
-
-function firstNonEmptyString(values) {
-  for (const value of values) {
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
-  }
-
-  return "";
-}
 
 function normalizeRoleName(value) {
   return String(value || "").trim().toLowerCase();
@@ -53,19 +44,7 @@ export async function POST(request) {
       );
     }
 
-    const rawToken = authData?.data?.data?.token || authData?.data?.token || authData?.token;
-    const token = typeof rawToken === "string"
-      ? rawToken.replace(/^Bearer\s+/i, "").trim()
-      : "";
-
-    if (!token) {
-      return NextResponse.json(
-        { message: "El servidor no devolvio un token." },
-        { status: 502 }
-      );
-    }
-
-    const loggedUser = authData?.data?.user || authData?.user || null;
+    const loggedUser = authData?.data?.data?.user || authData?.data?.user || authData?.user || null;
     const safeSessionUser = loggedUser
       ? {
           id: Number(loggedUser?.id) || null,
@@ -82,24 +61,12 @@ export async function POST(request) {
       );
     }
 
-    const cookieStore = await cookies();
-    const baseCookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24,
-    };
-
-    cookieStore.set("token", token, baseCookieOptions);
-
-    if (safeSessionUser) {
-      cookieStore.set("session_user", encodeURIComponent(JSON.stringify(safeSessionUser)), baseCookieOptions);
-    } else {
-      cookieStore.delete("session_user");
+    const persisted = await parseLoginResponseAndPersist(authData, safeSessionUser);
+    if (!persisted.ok) {
+      return NextResponse.json({ message: persisted.message }, { status: 502 });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, accessToken: persisted.accessToken, user: safeSessionUser });
   } catch {
     return NextResponse.json(
       { message: "Error al iniciar sesion. Intenta nuevamente." },

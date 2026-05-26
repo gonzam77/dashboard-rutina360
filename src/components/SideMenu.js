@@ -127,9 +127,17 @@ export default function SideMenu({
       <form action="/api/auth/logout" method="post" className="border-t border-white/10 p-4">
         <button
           type="submit"
-          className="w-full rounded-lg border border-red-300/40 bg-red-900/20 px-3 py-2 text-sm font-medium text-red-100 transition hover:bg-red-900/35"
+          className="mb-2 w-full rounded-lg border border-red-300/40 bg-red-900/20 px-3 py-2 text-sm font-medium text-red-100 transition hover:bg-red-900/35"
         >
           Cerrar sesion
+        </button>
+      </form>
+      <form action="/api/auth/logout-all" method="post" className="px-4 pb-4">
+        <button
+          type="submit"
+          className="w-full rounded-lg border border-amber-200/35 bg-amber-900/20 px-3 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-900/35"
+        >
+          Cerrar todas las sesiones
         </button>
       </form>
     </aside>

@@ -1,12 +1,13 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getServerAccessToken } from "@/lib/auth-service";
 
 const ASSIGN_ROUTINE_URL = "https://rutina360-server.onrender.com/routine/assign/";
 
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await getServerAccessToken();
     const body = await request.json();
 
     const idRoutine = Number(body?.idRoutine);

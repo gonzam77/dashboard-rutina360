@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import SideMenu from "@/components/SideMenu";
 import { firstNonEmptyString, normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
+import { getServerAccessToken } from "@/lib/auth-service";
 
 const USERS_URL = "https://rutina360-server.onrender.com/users";
 
@@ -77,7 +78,7 @@ async function fetchCurrentUser(token, userId) {
 
 export default async function InicioLayout({ children }) {
   const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
+  const token = await getServerAccessToken();
 
   if (!token) {
     redirect("/login");

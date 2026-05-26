@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getServerAccessToken } from "@/lib/auth-service";
 import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 
 const ROUTINES_URL = "https://rutina360-server.onrender.com/routine";
@@ -7,7 +8,7 @@ const ROUTINES_URL = "https://rutina360-server.onrender.com/routine";
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await getServerAccessToken();
     const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
     const roleKey = normalizeRoleKey(sessionUser?.roleName);
     const body = await request.json();

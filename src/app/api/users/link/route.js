@@ -1,12 +1,13 @@
-﻿import { cookies } from "next/headers";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getServerAccessToken } from "@/lib/auth-service";
 
 const USER_LINKS_URL = "https://rutina360-server.onrender.com/users/link/";
 
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await getServerAccessToken();
     const body = await request.json();
 
     const idAthlete = Number(body?.idAthlete);
@@ -47,7 +48,7 @@ export async function POST(request) {
 export async function DELETE(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await getServerAccessToken();
     const body = await request.json();
 
     const idAthlete = Number(body?.idAthlete);
