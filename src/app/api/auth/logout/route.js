@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server";
 import { callBackendLogoutCurrentSession, clearAuthCookies } from "@/lib/auth-service";
 
-export async function POST(request) {
+export async function POST() {
   await callBackendLogoutCurrentSession();
   await clearAuthCookies();
-  return NextResponse.redirect(new URL("/login", request.url));
+  return new Response(null, {
+    status: 303,
+    headers: { Location: "/login" },
+  });
 }
