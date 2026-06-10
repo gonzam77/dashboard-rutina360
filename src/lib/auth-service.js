@@ -95,7 +95,7 @@ export async function setAuthCookies({ accessToken, refreshToken, sessionUser })
   }
 
   if (sessionUser) {
-    cookieStore.set(SESSION_USER_COOKIE, encodeURIComponent(JSON.stringify(sessionUser)), cookieOptions(60 * 60 * 24 * 14));
+    cookieStore.set(SESSION_USER_COOKIE, JSON.stringify(sessionUser), cookieOptions(60 * 60 * 24 * 14));
   }
 }
 
@@ -195,4 +195,3 @@ export async function callBackendLogoutAllSessions() {
 
   return { ok: response.ok, status: response.status };
 }
-

@@ -14,7 +14,15 @@ export function parseSessionUserCookie(rawValue) {
   }
 
   try {
-    const decoded = decodeURIComponent(rawValue);
+    let decoded = rawValue;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const nextDecoded = decodeURIComponent(decoded);
+      if (nextDecoded === decoded) {
+        break;
+      }
+      decoded = nextDecoded;
+    }
+
     return JSON.parse(decoded);
   } catch {
     return null;
