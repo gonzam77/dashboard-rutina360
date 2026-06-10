@@ -6,9 +6,11 @@ const REFRESH_COOKIE = "refresh_token";
 const SESSION_USER_COOKIE = "session_user";
 
 function cookieOptions(maxAgeSeconds) {
+  const secureCookies = process.env.AUTH_COOKIE_SECURE === "true";
+
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: secureCookies,
     sameSite: "lax",
     path: "/",
     ...(Number.isFinite(maxAgeSeconds) ? { maxAge: maxAgeSeconds } : {}),
