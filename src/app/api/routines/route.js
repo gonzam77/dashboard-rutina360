@@ -2,8 +2,9 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getServerAccessToken } from "@/lib/auth-service";
 import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
+import { apiUrl } from "@/lib/api-url";
 
-const ROUTINES_URL = "https://rutina360-server.onrender.com/routine";
+const ROUTINES_URL = apiUrl("/routine");
 
 export async function POST(request) {
   try {

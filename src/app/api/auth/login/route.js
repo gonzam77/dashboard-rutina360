@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { firstNonEmptyString } from "@/lib/session";
 import { parseLoginResponseAndPersist } from "@/lib/auth-service";
+import { apiUrl } from "@/lib/api-url";
 
-const AUTH_URL = "https://rutina360-server.onrender.com/users/auth";
+const AUTH_URL = apiUrl("/users/auth");
 
 function normalizeRoleName(value) {
   return String(value || "").trim().toLowerCase();

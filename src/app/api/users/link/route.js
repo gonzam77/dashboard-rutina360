@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getServerAccessToken } from "@/lib/auth-service";
+import { apiUrl } from "@/lib/api-url";
 
-const USER_LINKS_URL = "https://rutina360-server.onrender.com/users/link/";
+const USER_LINKS_URL = apiUrl("/users/link");
 
 export async function POST(request) {
   try {

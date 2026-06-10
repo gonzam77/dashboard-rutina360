@@ -2,9 +2,10 @@
 import { cookies } from "next/headers";
 import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 import RoleCreateForm from "@/components/roles/RoleCreateForm";
+import { apiUrl } from "@/lib/api-url";
 
-const ROLES_URL = "https://rutina360-server.onrender.com/rol";
-const USERS_URL = "https://rutina360-server.onrender.com/users";
+const ROLES_URL = apiUrl("/rol");
+const USERS_URL = apiUrl("/users");
 
 async function getRoles(token) {
   const response = await fetch(ROLES_URL, {

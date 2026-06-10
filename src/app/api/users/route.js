@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getServerAccessToken } from "@/lib/auth-service";
+import { apiUrl } from "@/lib/api-url";
 
-const USERS_URL = "https://rutina360-server.onrender.com/users";
-const ROLES_URL = "https://rutina360-server.onrender.com/rol";
+const USERS_URL = apiUrl("/users");
+const ROLES_URL = apiUrl("/rol");
 
 function parseJwtPayload(token) {
   try {

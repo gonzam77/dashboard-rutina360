@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { apiUrl } from "@/lib/api-url";
 
-const ASSIGN_ROUTINE_URL = "https://rutina360-server.onrender.com/routine/assign";
+const ASSIGN_ROUTINE_URL = apiUrl("/routine/assign");
 
 export async function PATCH(request) {
   try {

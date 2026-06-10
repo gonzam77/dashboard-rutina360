@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { apiUrl } from "@/lib/api-url";
 
-const ROUTINES_URL = "https://rutina360-server.onrender.com/routine";
+const ROUTINES_URL = apiUrl("/routine");
 
 function normalizeRoutinePayload(body) {
   const name = String(body?.name || "").trim();

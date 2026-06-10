@@ -8,12 +8,13 @@ import BackNavButton from "@/components/BackNavButton";
 import UserProfileEditor from "@/components/roles/UserProfileEditor";
 import AthleteCoachLinkCard from "@/components/roles/AthleteCoachLinkCard";
 import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
+import { apiUrl } from "@/lib/api-url";
 
-const ROLES_URL = "https://rutina360-server.onrender.com/rol";
-const USERS_URL = "https://rutina360-server.onrender.com/users";
-const ROUTINES_URL = "https://rutina360-server.onrender.com/routine";
-const USER_LINKS_URL = "https://rutina360-server.onrender.com/users/link";
-const ATHLETE_ASSIGNED_ROUTINES_URL = "https://rutina360-server.onrender.com/routine/assign/athlete/";
+const ROLES_URL = apiUrl("/rol");
+const USERS_URL = apiUrl("/users");
+const ROUTINES_URL = apiUrl("/routine");
+const USER_LINKS_URL = apiUrl("/users/link");
+const ATHLETE_ASSIGNED_ROUTINES_URL = apiUrl("/routine/assign/athlete");
 
 async function fetchList(url, fallbackMessage, token) {
   const response = await fetch(url, {

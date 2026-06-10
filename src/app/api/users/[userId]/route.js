@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { apiUrl } from "@/lib/api-url";
 
-const API_BASE = "https://rutina360-server.onrender.com/users";
-const ROLES_URL = "https://rutina360-server.onrender.com/rol";
+const API_BASE = apiUrl("/users");
+const ROLES_URL = apiUrl("/rol");
 
 function normalizeRoleName(value) {
   return String(value || "").trim().toLowerCase();

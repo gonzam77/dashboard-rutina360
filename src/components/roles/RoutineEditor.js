@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const MUSCLE_GROUPS_URL = "https://rutina360-server.onrender.com/muscleGroup";
-const EXERCISES_URL = "https://rutina360-server.onrender.com/ejercice";
+const MUSCLE_GROUPS_URL = "/api/muscle-groups";
+const EXERCISES_URL = "/api/exercises";
 
 function getRoutineExercises(routine) {
   if (Array.isArray(routine?.exercises)) {

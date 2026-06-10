@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import SideMenu from "@/components/SideMenu";
 import { firstNonEmptyString, normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 import { getServerAccessToken } from "@/lib/auth-service";
+import { apiUrl } from "@/lib/api-url";
 
-const USERS_URL = "https://rutina360-server.onrender.com/users";
+const USERS_URL = apiUrl("/users");
 
 function parseJwtPayload(token) {
   try {

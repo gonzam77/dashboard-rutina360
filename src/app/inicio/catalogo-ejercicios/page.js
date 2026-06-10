@@ -3,11 +3,12 @@ import { cookies } from "next/headers";
 import ExerciseDeleteButton from "@/components/catalog/ExerciseDeleteButton";
 import { getServerAccessToken } from "@/lib/auth-service";
 import { parseSessionUserCookie } from "@/lib/session";
+import { apiUrl } from "@/lib/api-url";
 
-const MUSCLE_GROUPS_URL = "https://rutina360-server.onrender.com/muscleGroup";
-const EXERCISES_URL = "https://rutina360-server.onrender.com/ejercice";
-const ROUTINES_URL = "https://rutina360-server.onrender.com/routine";
-const ASSIGNMENTS_URL = "https://rutina360-server.onrender.com/routine/assign";
+const MUSCLE_GROUPS_URL = apiUrl("/muscleGroup");
+const EXERCISES_URL = apiUrl("/ejercice");
+const ROUTINES_URL = apiUrl("/routine");
+const ASSIGNMENTS_URL = apiUrl("/routine/assign");
 const SUPER_ADMIN_OWNER_ID = 1;
 
 function normalizeRoleName(value) {

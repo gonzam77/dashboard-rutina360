@@ -2,11 +2,12 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import RoleUsersManager from "@/components/roles/RoleUsersManager";
 import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
+import { apiUrl } from "@/lib/api-url";
 
-const ROLES_URL = "https://rutina360-server.onrender.com/rol";
-const USERS_URL = "https://rutina360-server.onrender.com/users";
-const USER_LINKS_URL = "https://rutina360-server.onrender.com/users/link";
-const ASSIGNMENTS_URL = "https://rutina360-server.onrender.com/routine/assign";
+const ROLES_URL = apiUrl("/rol");
+const USERS_URL = apiUrl("/users");
+const USER_LINKS_URL = apiUrl("/users/link");
+const ASSIGNMENTS_URL = apiUrl("/routine/assign");
 
 async function getRoleById(roleId, token) {
   const response = await fetch(ROLES_URL, {

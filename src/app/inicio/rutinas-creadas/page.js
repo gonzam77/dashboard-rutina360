@@ -2,10 +2,11 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 import CoachCreateRoutineButton from "@/components/roles/CoachCreateRoutineButton";
+import { apiUrl } from "@/lib/api-url";
 
-const ROUTINES_URL = "https://rutina360-server.onrender.com/routine";
-const USERS_URL = "https://rutina360-server.onrender.com/users";
-const ASSIGNMENTS_URL = "https://rutina360-server.onrender.com/routine/assign";
+const ROUTINES_URL = apiUrl("/routine");
+const USERS_URL = apiUrl("/users");
+const ASSIGNMENTS_URL = apiUrl("/routine/assign");
 
 async function fetchList(url, fallbackMessage, token) {
   const response = await fetch(url, {

@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
+import { apiUrl } from "@/lib/api-url";
 
-const EXERCISES_URL = "https://rutina360-server.onrender.com/ejercice";
-const ROUTINES_URL = "https://rutina360-server.onrender.com/routine";
-const ASSIGNMENTS_URL = "https://rutina360-server.onrender.com/routine/assign";
+const EXERCISES_URL = apiUrl("/ejercice");
+const ROUTINES_URL = apiUrl("/routine");
+const ASSIGNMENTS_URL = apiUrl("/routine/assign");
 
 function normalizeRoleName(value) {
   return String(value || "").trim().toLowerCase();

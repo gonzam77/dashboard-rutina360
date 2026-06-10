@@ -1,7 +1,8 @@
 ﻿import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { apiUrl } from "@/lib/api-url";
 
-const ROLES_URL = "https://rutina360-server.onrender.com/rol";
+const ROLES_URL = apiUrl("/rol");
 
 function parseJwtPayload(token) {
   try {

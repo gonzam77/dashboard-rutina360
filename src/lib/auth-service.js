@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
+import { apiUrl } from "@/lib/api-url";
 
-const API_BASE = "https://rutina360-server.onrender.com";
+const API_BASE = apiUrl();
 const ACCESS_COOKIE = "token";
 const REFRESH_COOKIE = "refresh_token";
 const SESSION_USER_COOKIE = "session_user";
