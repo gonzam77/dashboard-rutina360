@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerAccessToken } from "@/lib/auth-service";
 import { apiUrl } from "@/lib/api-url";
+import { extractArrayPayload } from "@/lib/api-response";
 
 const EXERCISES_URL = apiUrl("/ejercice");
 
@@ -23,7 +24,7 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json(json);
+    return NextResponse.json({ data: extractArrayPayload(json) });
   } catch {
     return NextResponse.json({ message: "Error al cargar ejercicios." }, { status: 500 });
   }

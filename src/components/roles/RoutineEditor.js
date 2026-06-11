@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { extractArrayPayload } from "@/lib/api-response";
 
 const MUSCLE_GROUPS_URL = "/api/muscle-groups";
 const EXERCISES_URL = "/api/exercises";
@@ -82,8 +83,8 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
 
       try {
         const [groupsResponse, exercisesResponse] = await Promise.all([
-          fetch(MUSCLE_GROUPS_URL, { cache: "no-store" }),
-          fetch(EXERCISES_URL, { cache: "no-store" }),
+          fetch(MUSCLE_GROUPS_URL, { cache: "no-store", credentials: "include" }),
+          fetch(EXERCISES_URL, { cache: "no-store", credentials: "include" }),
         ]);
 
         const groupsJson = await groupsResponse.json().catch(() => ({}));
@@ -94,12 +95,12 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
         }
 
         if (!groupsResponse.ok || !exercisesResponse.ok) {
-          setError("No se pudieron cargar grupos musculares y ejercicios.");
+          setError(groupsJson?.message || exercisesJson?.message || "No se pudieron cargar grupos musculares y ejercicios.");
           return;
         }
 
-        setMuscleGroups(Array.isArray(groupsJson?.data) ? groupsJson.data : []);
-        setExercises(Array.isArray(exercisesJson?.data) ? exercisesJson.data : []);
+        setMuscleGroups(extractArrayPayload(groupsJson));
+        setExercises(extractArrayPayload(exercisesJson));
       } catch {
         if (mounted) {
           setError("No se pudieron cargar grupos musculares y ejercicios.");

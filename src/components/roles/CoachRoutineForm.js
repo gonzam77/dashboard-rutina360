@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { extractArrayPayload } from "@/lib/api-response";
 
 const MUSCLE_GROUPS_URL = "/api/muscle-groups";
 const EXERCISES_URL = "/api/exercises";
@@ -22,6 +23,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
     comments: "",
   });
   const [loading, setLoading] = useState(false);
+  const [loadingCatalogs, setLoadingCatalogs] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -29,10 +31,13 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
     let mounted = true;
 
     async function loadCatalogs() {
+      setLoadingCatalogs(true);
+      setError("");
+
       try {
         const [groupsResponse, exercisesResponse] = await Promise.all([
-          fetch(MUSCLE_GROUPS_URL, { cache: "no-store" }),
-          fetch(EXERCISES_URL, { cache: "no-store" }),
+          fetch(MUSCLE_GROUPS_URL, { cache: "no-store", credentials: "include" }),
+          fetch(EXERCISES_URL, { cache: "no-store", credentials: "include" }),
         ]);
 
         const groupsJson = await groupsResponse.json().catch(() => ({}));
@@ -42,13 +47,25 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
           return;
         }
 
-        setMuscleGroups(Array.isArray(groupsJson?.data) ? groupsJson.data : []);
-        setExercises(Array.isArray(exercisesJson?.data) ? exercisesJson.data : []);
-      } catch {
+        if (!groupsResponse.ok || !exercisesResponse.ok) {
+          const fallbackMessage = "No se pudieron cargar grupos musculares y ejercicios.";
+          setError(groupsJson?.message || exercisesJson?.message || fallbackMessage);
+          setMuscleGroups([]);
+          setExercises([]);
+          return;
+        }
+
+        setMuscleGroups(extractArrayPayload(groupsJson));
+        setExercises(extractArrayPayload(exercisesJson));
+      } catch (loadError) {
         if (!mounted) {
           return;
         }
-        setError("No se pudieron cargar grupos musculares y ejercicios.");
+        setError(loadError.message || "No se pudieron cargar grupos musculares y ejercicios.");
+      } finally {
+        if (mounted) {
+          setLoadingCatalogs(false);
+        }
       }
     }
 
@@ -84,6 +101,11 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
   }
 
   function addConfirmedExercise() {
+    if (loadingCatalogs) {
+      setError("Espera a que termine de cargar el catalogo de ejercicios.");
+      return;
+    }
+
     if (!draftExercise.muscleGroupId || !draftExercise.idEjercice || !draftExercise.series || !draftExercise.rest) {
       setError("Completa grupo muscular, ejercicio, series y descanso antes de confirmar.");
       return;
@@ -196,13 +218,21 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
         <div className="md:col-span-2">
           <p className="mb-2 text-sm font-medium text-white/85">Agregar ejercicios (uno por uno)</p>
           <div className="flex flex-col rounded-lg border border-white/15 bg-[#17385a] p-3">
+            {loadingCatalogs ? (
+              <p className="mb-3 rounded-lg border border-white/15 bg-[#0f2a46] px-3 py-2 text-sm text-white/70">
+                Cargando grupos musculares y ejercicios...
+              </p>
+            ) : null}
             <div className="grid gap-3 md:grid-cols-2">
               <select
                 value={draftExercise.muscleGroupId}
                 onChange={(event) => updateDraftExercise("muscleGroupId", event.target.value)}
-                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white"
+                disabled={loadingCatalogs || muscleGroups.length === 0}
+                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white disabled:bg-[#0b223a] disabled:text-white/45"
               >
-                <option value="" disabled className="bg-[#0f2a46] text-white">Seleccionar grupo muscular</option>
+                <option value="" disabled className="bg-[#0f2a46] text-white">
+                  {muscleGroups.length > 0 ? "Seleccionar grupo muscular" : "No hay grupos musculares disponibles"}
+                </option>
                 {muscleGroups.map((group) => (
                   <option key={group.id} value={group.id} className="bg-[#0f2a46] text-white">
                     {group.name}
@@ -213,7 +243,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
               <select
                 value={draftExercise.idEjercice}
                 onChange={(event) => updateDraftExercise("idEjercice", event.target.value)}
-                disabled={!draftExercise.muscleGroupId}
+                disabled={loadingCatalogs || !draftExercise.muscleGroupId}
                 className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white disabled:bg-[#0b223a] disabled:text-white/45"
               >
                 <option value="" disabled className="bg-[#0f2a46] text-white">
@@ -255,7 +285,8 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
               <button
                 type="button"
                 onClick={addConfirmedExercise}
-                className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-medium text-cyan-100 hover:bg-cyan-300/20"
+                disabled={loadingCatalogs}
+                className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-medium text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60"
               >
                 Confirmar ejercicio y agregar
               </button>
@@ -285,7 +316,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
         </div>
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || loadingCatalogs}
           className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 font-medium text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60 md:col-span-2"
         >
           {loading ? "Creando rutina..." : "Crear rutina"}

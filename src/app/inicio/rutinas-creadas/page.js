@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 import CoachCreateRoutineButton from "@/components/roles/CoachCreateRoutineButton";
+import { getServerAccessToken } from "@/lib/auth-service";
 import { apiUrl } from "@/lib/api-url";
 
 const ROUTINES_URL = apiUrl("/routine");
@@ -252,19 +254,21 @@ function buildRoutineRows(routines, assignments, users) {
 }
 
 export default async function RutinasCreadasPage() {
+  const cookieStore = await cookies();
+  const token = await getServerAccessToken();
+  const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
+
+  if (!token) {
+    redirect("/login");
+  }
+
   let rows = [];
   let errorMessage = "";
-  let roleKey = "unknown";
-  let viewerId = null;
+  let roleKey = normalizeRoleKey(sessionUser?.roleName);
+  let viewerId = Number(sessionUser?.id) || null;
   let viewerGymOwnerId = null;
 
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
-    const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
-    roleKey = normalizeRoleKey(sessionUser?.roleName);
-    viewerId = Number(sessionUser?.id) || null;
-
     const [routines, users, assignments] = await Promise.all([
       fetchList(ROUTINES_URL, "No se pudieron cargar las rutinas.", token),
       fetchList(USERS_URL, "No se pudieron cargar los usuarios.", token),
