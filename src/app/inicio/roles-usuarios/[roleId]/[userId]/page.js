@@ -8,6 +8,7 @@ import BackNavButton from "@/components/BackNavButton";
 import UserProfileEditor from "@/components/roles/UserProfileEditor";
 import AthleteCoachLinkCard from "@/components/roles/AthleteCoachLinkCard";
 import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
+import { getServerAccessToken } from "@/lib/auth-service";
 import { apiUrl } from "@/lib/api-url";
 
 const ROLES_URL = apiUrl("/rol");
@@ -154,7 +155,12 @@ export default async function UserProfilePage({ params, searchParams }) {
 
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await getServerAccessToken();
+
+    if (!token) {
+      throw new Error("No autenticado.");
+    }
+
     const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
     viewerRoleKey = normalizeRoleKey(sessionUser?.roleName);
     viewerUserId = Number(sessionUser?.id) || null;

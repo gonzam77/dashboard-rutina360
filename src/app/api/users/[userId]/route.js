@@ -1,5 +1,5 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getServerAccessToken } from "@/lib/auth-service";
 import { apiUrl } from "@/lib/api-url";
 
 const API_BASE = apiUrl("/users");
@@ -61,8 +61,12 @@ async function updateUser(request, { params }, preferredMethod) {
     }
 
     const body = await request.json();
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await getServerAccessToken();
+
+    if (!token) {
+      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    }
+
     const [users, roles] = await Promise.all([fetchList(API_BASE, token), fetchList(ROLES_URL, token)]);
     const currentUser = users.find((item) => Number(item?.id) === normalizedUserId);
 
@@ -174,8 +178,11 @@ export async function DELETE(request, { params }) {
     const { searchParams } = new URL(request.url);
     const permanent = searchParams.get("permanent") === "true";
 
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await getServerAccessToken();
+
+    if (!token) {
+      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    }
 
     const url = permanent 
       ? `${API_BASE}/eliminar/${userId}` 

@@ -1,5 +1,5 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getServerAccessToken } from "@/lib/auth-service";
 import { apiUrl } from "@/lib/api-url";
 
 const ROUTINES_URL = apiUrl("/routine");
@@ -78,8 +78,12 @@ async function updateRoutine(request, { params }, preferredMethod) {
       return NextResponse.json({ message: error }, { status: 400 });
     }
 
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await getServerAccessToken();
+
+    if (!token) {
+      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    }
+
     const fallbackMethod = preferredMethod === "PATCH" ? "PUT" : "PATCH";
     let response = await sendRoutineUpdate(routineId, payload, token, preferredMethod);
 
@@ -113,8 +117,11 @@ export async function PUT(request, context) {
 export async function DELETE(_request, { params }) {
   try {
     const { routineId } = await params;
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await getServerAccessToken();
+
+    if (!token) {
+      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    }
 
     const response = await fetch(`${ROUTINES_URL}/${routineId}`, {
       method: "DELETE",

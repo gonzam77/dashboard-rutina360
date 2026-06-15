@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import RoutineEditButton from "@/components/roles/RoutineEditButton";
+import { getServerAccessToken } from "@/lib/auth-service";
 import { apiUrl } from "@/lib/api-url";
 
 const ROUTINES_URL = apiUrl("/routine");
@@ -58,8 +58,11 @@ export default async function RoutineDetailPage({ params, searchParams }) {
   let exerciseNameById = new Map();
 
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await getServerAccessToken();
+
+    if (!token) {
+      throw new Error("No autenticado.");
+    }
 
     const [routines, exercises] = await Promise.all([
       fetchList(ROUTINES_URL, "No se pudieron cargar las rutinas.", token),

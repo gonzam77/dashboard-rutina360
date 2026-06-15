@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getServerAccessToken } from "@/lib/auth-service";
 import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 import { apiUrl } from "@/lib/api-url";
 
@@ -141,7 +142,12 @@ export async function DELETE(_request, { params }) {
     }
 
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await getServerAccessToken();
+
+    if (!token) {
+      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    }
+
     const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
     const viewerId = Number(sessionUser?.id) || null;
     const viewerRoleName = sessionUser?.roleName || "";

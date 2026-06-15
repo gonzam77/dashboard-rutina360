@@ -1,5 +1,5 @@
-﻿import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getServerAccessToken } from "@/lib/auth-service";
 import { apiUrl } from "@/lib/api-url";
 
 const ROLES_URL = apiUrl("/rol");
@@ -35,8 +35,7 @@ function getUserIdFromPayload(payload) {
 
 export async function POST(request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await getServerAccessToken();
 
     if (!token) {
       return NextResponse.json({ message: "No autenticado." }, { status: 401 });

@@ -1,5 +1,6 @@
 ﻿import Link from "next/link";
 import { cookies } from "next/headers";
+import { getServerAccessToken } from "@/lib/auth-service";
 import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 import RoleCreateForm from "@/components/roles/RoleCreateForm";
 import { apiUrl } from "@/lib/api-url";
@@ -226,7 +227,12 @@ export default async function RolesUsuariosPage() {
 
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await getServerAccessToken();
+
+    if (!token) {
+      throw new Error("No autenticado.");
+    }
+
     const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
     roleKey = normalizeRoleKey(sessionUser?.roleName);
     const viewerId = Number(sessionUser?.id) || null;
