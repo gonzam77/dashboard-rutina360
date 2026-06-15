@@ -7,7 +7,12 @@ const MUSCLE_GROUPS_URL = apiUrl("/muscleGroup");
 
 export async function GET() {
   try {
-    const token = await getServerAccessToken();
+    const token = await getServerAccessToken({ allowRefresh: false });
+
+    if (!token) {
+      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    }
+
     const response = await fetch(MUSCLE_GROUPS_URL, {
       cache: "no-store",
       headers: {

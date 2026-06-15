@@ -164,16 +164,24 @@ export async function refreshWithCookie() {
   return { ok: true, accessToken, refreshToken };
 }
 
-export async function getServerAccessToken() {
+export async function getServerAccessToken({ allowRefresh = true } = {}) {
   const cookieStore = await cookies();
   const token = cookieStore.get(ACCESS_COOKIE)?.value;
 
   if (!token) {
+    if (!allowRefresh) {
+      return "";
+    }
+
     const refreshed = await refreshWithCookie();
     return refreshed.ok ? refreshed.accessToken : "";
   }
 
   if (isTokenExpiredOrNear(token)) {
+    if (!allowRefresh) {
+      return "";
+    }
+
     const refreshed = await refreshWithCookie();
     return refreshed.ok ? refreshed.accessToken : "";
   }

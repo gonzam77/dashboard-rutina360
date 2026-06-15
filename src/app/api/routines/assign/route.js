@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getServerAccessToken } from "@/lib/auth-service";
 import { apiUrl } from "@/lib/api-url";
@@ -7,9 +6,12 @@ const ASSIGN_ROUTINE_URL = apiUrl("/routine/assign");
 
 export async function POST(request) {
   try {
-    const cookieStore = await cookies();
-    const token = await getServerAccessToken();
+    const token = await getServerAccessToken({ allowRefresh: false });
     const body = await request.json();
+
+    if (!token) {
+      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    }
 
     const idRoutine = Number(body?.idRoutine);
     const idAthlete = Number(body?.idAthlete);

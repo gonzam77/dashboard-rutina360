@@ -47,6 +47,11 @@ async function createMuscleGroup(formData) {
   const name = String(formData.get("name") || "").trim();
   const cookieStore = await cookies();
   const token = await getServerAccessToken();
+
+  if (!token) {
+    throw new Error("No autenticado.");
+  }
+
   const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
   const roleName = sessionUser?.roleName || "";
 
@@ -83,6 +88,11 @@ async function createExercise(formData) {
   const idMuscleGroup = Number(formData.get("idMuscleGroup"));
   const cookieStore = await cookies();
   const token = await getServerAccessToken();
+
+  if (!token) {
+    throw new Error("No autenticado.");
+  }
+
   const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
   const roleName = sessionUser?.roleName || "";
 
@@ -257,6 +267,11 @@ export default async function CatalogoEjerciciosPage() {
   try {
     const cookieStore = await cookies();
     const token = await getServerAccessToken();
+
+    if (!token) {
+      throw new Error("No autenticado.");
+    }
+
     const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
     const roleName = sessionUser?.roleName || "";
     viewerUserId = Number(sessionUser?.id) || null;

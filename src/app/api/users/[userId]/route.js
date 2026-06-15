@@ -61,7 +61,7 @@ async function updateUser(request, { params }, preferredMethod) {
     }
 
     const body = await request.json();
-    const token = await getServerAccessToken();
+    const token = await getServerAccessToken({ allowRefresh: false });
 
     if (!token) {
       return NextResponse.json({ message: "No autenticado." }, { status: 401 });
@@ -178,7 +178,7 @@ export async function DELETE(request, { params }) {
     const { searchParams } = new URL(request.url);
     const permanent = searchParams.get("permanent") === "true";
 
-    const token = await getServerAccessToken();
+    const token = await getServerAccessToken({ allowRefresh: false });
 
     if (!token) {
       return NextResponse.json({ message: "No autenticado." }, { status: 401 });

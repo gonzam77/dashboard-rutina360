@@ -9,7 +9,12 @@ const ROUTINES_URL = apiUrl("/routine");
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
-    const token = await getServerAccessToken();
+    const token = await getServerAccessToken({ allowRefresh: false });
+
+    if (!token) {
+      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    }
+
     const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
     const roleKey = normalizeRoleKey(sessionUser?.roleName);
     const body = await request.json();

@@ -35,7 +35,7 @@ function getUserIdFromPayload(payload) {
 
 export async function POST(request) {
   try {
-    const token = await getServerAccessToken();
+    const token = await getServerAccessToken({ allowRefresh: false });
 
     if (!token) {
       return NextResponse.json({ message: "No autenticado." }, { status: 401 });

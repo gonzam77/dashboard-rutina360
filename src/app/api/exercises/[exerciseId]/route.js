@@ -142,7 +142,7 @@ export async function DELETE(_request, { params }) {
     }
 
     const cookieStore = await cookies();
-    const token = await getServerAccessToken();
+    const token = await getServerAccessToken({ allowRefresh: false });
 
     if (!token) {
       return NextResponse.json({ message: "No autenticado." }, { status: 401 });

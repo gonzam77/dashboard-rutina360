@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getServerAccessToken } from "@/lib/auth-service";
 import { apiUrl } from "@/lib/api-url";
@@ -72,9 +71,12 @@ async function fetchList(url, token) {
 
 export async function POST(request) {
   try {
-    const cookieStore = await cookies();
-    const token = await getServerAccessToken();
+    const token = await getServerAccessToken({ allowRefresh: false });
     const body = await request.json();
+
+    if (!token) {
+      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    }
 
     const username = body?.username?.trim().toUpperCase();
     const dni = body?.dni?.trim();

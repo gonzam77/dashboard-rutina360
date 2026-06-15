@@ -78,7 +78,7 @@ async function updateRoutine(request, { params }, preferredMethod) {
       return NextResponse.json({ message: error }, { status: 400 });
     }
 
-    const token = await getServerAccessToken();
+    const token = await getServerAccessToken({ allowRefresh: false });
 
     if (!token) {
       return NextResponse.json({ message: "No autenticado." }, { status: 401 });
@@ -117,7 +117,7 @@ export async function PUT(request, context) {
 export async function DELETE(_request, { params }) {
   try {
     const { routineId } = await params;
-    const token = await getServerAccessToken();
+    const token = await getServerAccessToken({ allowRefresh: false });
 
     if (!token) {
       return NextResponse.json({ message: "No autenticado." }, { status: 401 });

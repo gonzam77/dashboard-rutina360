@@ -6,7 +6,7 @@ const ASSIGN_ROUTINE_URL = apiUrl("/routine/assign");
 
 export async function PATCH(request) {
   try {
-    const token = await getServerAccessToken();
+    const token = await getServerAccessToken({ allowRefresh: false });
     const body = await request.json();
 
     if (!token) {
