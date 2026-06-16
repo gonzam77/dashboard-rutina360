@@ -3,7 +3,7 @@ const BLOCKED_API_HOSTS = new Set(["rutina360-server.onrender.com"]);
 export function getApiBaseUrl() {
   const configuredUrl = process.env.API_BASE_URL;
   
-  console.log('API_BASE_URL: ', API_BASE);
+  console.log('API_BASE_URL: ', API_BASE_URL);
 
   if (!configuredUrl) {
     throw new Error("API_BASE_URL no esta configurada.");

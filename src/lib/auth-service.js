@@ -8,7 +8,6 @@ const SESSION_USER_COOKIE = "session_user";
 const ACCESS_TOKEN_FALLBACK_MAX_AGE = 60 * 60 * 8;
 const REFRESH_TOKEN_FALLBACK_MAX_AGE = 60 * 60 * 24 * 60;
 
-console.log('API_BASE_URL: ', API_BASE);
 
 function cookieOptions(maxAgeSeconds) {
   const secureCookies = process.env.AUTH_COOKIE_SECURE === "true";
