@@ -7,7 +7,7 @@ module.exports = {
       cwd: __dirname,
       env: {
         NODE_ENV: "production",
-        API_BASE_URL: "http://2.25.189.180:5000",
+        API_BASE_URL: "http://localhost:5000",
       }
     }
   ]
