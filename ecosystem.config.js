@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "dashboard-rutina360",
       script: "npm",
-      args: "start -- -p 3001",
+      args: "start -- -H 127.0.0.1 -p 3001",
       cwd: __dirname,
       env: {
         NODE_ENV: "production",
