@@ -1,12 +1,13 @@
 module.exports = {
   apps: [
     {
-      name: "mi-app",
+      name: "dashboard-rutina360",
       script: "npm",
       args: "start -- -p 3001",
-      cwd: "/ruta/a/tu/proyecto",
+      cwd: __dirname,
       env: {
-        NODE_ENV: "production"
+        NODE_ENV: "production",
+        API_BASE_URL: "http://2.25.189.180:5000",
       }
     }
   ]
