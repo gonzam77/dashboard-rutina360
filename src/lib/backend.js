@@ -42,6 +42,16 @@ export async function apiRequest(path, { token, method = "GET", body, headers } 
 }
 
 /**
+ * Deja rastro en el servidor de toda lectura fallida.
+ * Sin esto, una URL mal armada o un 403 solo se ven como una seccion vacia en
+ * pantalla y no queda nada en `pm2 logs` para saber que paso.
+ * Solo se registran metodo, ruta y estado: nunca el token ni las cabeceras.
+ */
+function logBackendFailure(path, status, message) {
+  console.error(`[backend] GET ${path} -> ${status}${message ? ` :: ${message}` : ""}`);
+}
+
+/**
  * Lectura de lista memorizada por request (React cache).
  * Varias partes del arbol piden las mismas listas: con esto el backend recibe
  * una sola llamada por recurso y request, en vez de una por componente.
@@ -49,14 +59,19 @@ export async function apiRequest(path, { token, method = "GET", body, headers } 
  */
 const fetchResource = cache(async (path, token) => {
   try {
-    const { ok, json } = await apiRequest(path, { token });
+    const { ok, status, json } = await apiRequest(path, { token });
+
+    if (!ok) {
+      logBackendFailure(path, `HTTP ${status}`, json?.message);
+    }
 
     return {
       ok,
       data: Array.isArray(json?.data) ? json.data : [],
       message: json?.message || "",
     };
-  } catch {
+  } catch (error) {
+    logBackendFailure(path, "sin respuesta", error?.message);
     return { ok: false, data: [], message: "" };
   }
 });
