@@ -2,42 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { extractArrayPayload } from "@/lib/api-response";
+import { getRoutineExerciseId, getRoutineExercises } from "@/lib/routines";
 
 const MUSCLE_GROUPS_URL = "/api/muscle-groups";
 const EXERCISES_URL = "/api/exercises";
 
-function getRoutineExercises(routine) {
-  if (Array.isArray(routine?.exercises)) {
-    return routine.exercises;
-  }
-
-  if (Array.isArray(routine?.Routine_Ejercices)) {
-    return routine.Routine_Ejercices;
-  }
-
-  if (Array.isArray(routine?.Ejercices)) {
-    return routine.Ejercices;
-  }
-
-  if (Array.isArray(routine?.RoutineEjercices)) {
-    return routine.RoutineEjercices;
-  }
-
-  return [];
-}
-
-function getRoutineExerciseId(item) {
-  return (
-    item?.idEjercice ||
-    item?.Ejercice?.id ||
-    item?.exercise?.id ||
-    item?.Exercise?.id ||
-    item?.idExercise ||
-    item?.idEjercicio ||
-    item?.id
-  );
-}
+const INPUT_CLASS =
+  "rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55 disabled:opacity-60";
+const SELECT_CLASS =
+  "rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white disabled:bg-[#0b223a] disabled:text-white/45";
+const OPTION_CLASS = "bg-[#0f2a46] text-white";
 
 function createInitialExerciseRows(routine) {
   return getRoutineExercises(routine).map((item, index) => {
@@ -73,6 +49,7 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [isEmptyConfirmOpen, setIsEmptyConfirmOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -95,7 +72,11 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
         }
 
         if (!groupsResponse.ok || !exercisesResponse.ok) {
-          setError(groupsJson?.message || exercisesJson?.message || "No se pudieron cargar grupos musculares y ejercicios.");
+          setError(
+            groupsJson?.message ||
+              exercisesJson?.message ||
+              "No se pudieron cargar grupos musculares y ejercicios."
+          );
           return;
         }
 
@@ -119,15 +100,17 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
     };
   }, []);
 
-  const exerciseById = useMemo(() => {
-    return new Map(exercises.map((exercise) => [String(exercise.id), exercise]));
-  }, [exercises]);
+  const exerciseById = useMemo(
+    () => new Map(exercises.map((exercise) => [String(exercise.id), exercise])),
+    [exercises]
+  );
 
   const exercisesByGroup = useMemo(() => {
     const map = new Map();
 
     for (const item of exercises) {
       const key = String(item?.idMuscleGroup || "");
+
       if (!map.has(key)) {
         map.set(key, []);
       }
@@ -203,51 +186,26 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
     return payloadExercises;
   }
 
-  async function handleSubmit(event) {
-    event.preventDefault();
+  async function saveRoutine() {
     setSaving(true);
     setError("");
     setMessage("");
 
     try {
-      const name = routineName.trim();
-      const order = Number(routineOrder);
-      const time = Number(routineTime);
-
-      if (!name) {
-        setError("El nombre de la rutina es obligatorio.");
-        return;
-      }
-
-      if (!Number.isFinite(order) || order <= 0) {
-        setError("El orden de la rutina es invalido.");
-        return;
-      }
-
-      if (!Number.isFinite(time) || time <= 0) {
-        setError("El tiempo de la rutina es invalido.");
-        return;
-      }
-
-      if (
-        exerciseRows.length === 0 &&
-        !window.confirm("La rutina quedara sin ejercicios. Deseas guardar los cambios?")
-      ) {
-        return;
-      }
-
       const payloadExercises = buildPayloadExercises();
+
       const response = await fetch(`/api/routines/${routine.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name,
+          name: routineName.trim(),
           idUser: Number(routine?.idUser),
-          order,
-          time,
+          order: Number(routineOrder),
+          time: Number(routineTime),
           exercises: payloadExercises,
         }),
       });
+
       const json = await response.json().catch(() => ({}));
 
       if (!response.ok) {
@@ -257,6 +215,7 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
 
       setMessage("Rutina actualizada correctamente.");
       router.refresh();
+
       if (typeof onSaved === "function") {
         onSaved();
       }
@@ -264,12 +223,49 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
       setError(submitError.message || "Error de conexion al actualizar rutina.");
     } finally {
       setSaving(false);
+      setIsEmptyConfirmOpen(false);
     }
   }
 
+  function handleSubmit(event) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+
+    const name = routineName.trim();
+    const order = Number(routineOrder);
+    const time = Number(routineTime);
+
+    if (!name) {
+      setError("El nombre de la rutina es obligatorio.");
+      return;
+    }
+
+    if (!Number.isFinite(order) || order <= 0) {
+      setError("El orden de la rutina es invalido.");
+      return;
+    }
+
+    if (!Number.isFinite(time) || time <= 0) {
+      setError("El tiempo de la rutina es invalido.");
+      return;
+    }
+
+    if (exerciseRows.length === 0) {
+      setIsEmptyConfirmOpen(true);
+      return;
+    }
+
+    saveRoutine();
+  }
+
   return (
-    <section className={isInModal ? "" : "rounded-2xl bg-white p-6 shadow-sm"}>
-      {!isInModal ? <h2 className="text-lg font-semibold text-slate-900">Editar rutina</h2> : null}
+    <section
+      className={
+        isInModal ? "" : "rounded-2xl border border-white/15 bg-[#0f2a46] p-6 shadow-sm"
+      }
+    >
+      {!isInModal ? <h2 className="text-lg font-semibold text-white">Editar rutina</h2> : null}
       <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
         <div className="grid gap-3 md:grid-cols-2">
           <input
@@ -278,7 +274,7 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
             placeholder="Nombre de la rutina"
             value={routineName}
             onChange={(event) => setRoutineName(event.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2 text-black"
+            className={`${INPUT_CLASS} md:col-span-2`}
           />
           <input
             required
@@ -287,7 +283,7 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
             placeholder="Orden"
             value={routineOrder}
             onChange={(event) => setRoutineOrder(event.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-black"
+            className={INPUT_CLASS}
           />
           <input
             required
@@ -296,31 +292,31 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
             placeholder="Tiempo (minutos)"
             value={routineTime}
             onChange={(event) => setRoutineTime(event.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-black"
+            className={INPUT_CLASS}
           />
         </div>
 
         <div>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-medium text-slate-800">Ejercicios de la rutina</p>
+            <p className="text-sm font-medium text-white/85">Ejercicios de la rutina</p>
             <button
               type="button"
               onClick={addExerciseRow}
               disabled={loadingCatalogs}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-300/20 disabled:opacity-60"
             >
               Agregar ejercicio
             </button>
           </div>
 
           {loadingCatalogs ? (
-            <p className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">
+            <p className="rounded-lg border border-white/15 bg-[#17385a] px-3 py-2 text-sm text-white/70">
               Cargando catalogo de ejercicios...
             </p>
           ) : null}
 
           {!loadingCatalogs && exerciseRows.length === 0 ? (
-            <p className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">
+            <p className="rounded-lg border border-white/15 bg-[#17385a] px-3 py-2 text-sm text-white/70">
               La rutina quedara sin ejercicios.
             </p>
           ) : null}
@@ -332,17 +328,20 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
                 row.muscleGroupId ||
                 (selectedExercise?.idMuscleGroup ? String(selectedExercise.idMuscleGroup) : "");
               const availableExercises = exercisesByGroup.get(String(effectiveMuscleGroupId)) || [];
+              const isSelectedOutOfGroup =
+                selectedExercise &&
+                !availableExercises.some((exercise) => String(exercise.id) === String(row.idEjercice));
 
               return (
-                <article key={row.rowKey} className="rounded-xl border border-slate-200 p-3">
+                <article key={row.rowKey} className="rounded-xl border border-white/15 bg-[#0f2a46] p-3">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    <p className="text-xs font-medium uppercase tracking-wide text-white/60">
                       Ejercicio #{index + 1}
                     </p>
                     <button
                       type="button"
                       onClick={() => removeExerciseRow(row.rowKey)}
-                      className="rounded-lg border border-rose-300 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
+                      className="rounded-lg border border-rose-300/45 bg-rose-900/25 px-2 py-1 text-xs font-medium text-rose-100 transition hover:bg-rose-900/35"
                     >
                       Quitar
                     </button>
@@ -351,12 +350,17 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
                   <div className="grid gap-3 md:grid-cols-2">
                     <select
                       value={effectiveMuscleGroupId}
-                      onChange={(event) => updateExerciseRow(row.rowKey, "muscleGroupId", event.target.value)}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900"
+                      aria-label="Grupo muscular"
+                      onChange={(event) =>
+                        updateExerciseRow(row.rowKey, "muscleGroupId", event.target.value)
+                      }
+                      className={SELECT_CLASS}
                     >
-                      <option value="" disabled className="bg-white text-slate-900">Seleccionar grupo muscular</option>
+                      <option value="" disabled className={OPTION_CLASS}>
+                        Seleccionar grupo muscular
+                      </option>
                       {muscleGroups.map((group) => (
-                        <option key={group.id} value={group.id} className="bg-white text-slate-900">
+                        <option key={group.id} value={group.id} className={OPTION_CLASS}>
                           {group.name}
                         </option>
                       ))}
@@ -364,18 +368,25 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
 
                     <select
                       value={row.idEjercice}
-                      onChange={(event) => updateExerciseRow(row.rowKey, "idEjercice", event.target.value)}
+                      aria-label="Ejercicio"
+                      onChange={(event) =>
+                        updateExerciseRow(row.rowKey, "idEjercice", event.target.value)
+                      }
                       disabled={!effectiveMuscleGroupId}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
+                      className={SELECT_CLASS}
                     >
-                      <option value="" disabled className="bg-white text-slate-900">
-                        {effectiveMuscleGroupId ? "Seleccionar ejercicio" : "Primero selecciona grupo muscular"}
+                      <option value="" disabled className={OPTION_CLASS}>
+                        {effectiveMuscleGroupId
+                          ? "Seleccionar ejercicio"
+                          : "Primero selecciona grupo muscular"}
                       </option>
-                      {selectedExercise && !availableExercises.some((exercise) => String(exercise.id) === String(row.idEjercice)) ? (
-                        <option value={selectedExercise.id} className="bg-white text-slate-900">{selectedExercise.name}</option>
+                      {isSelectedOutOfGroup ? (
+                        <option value={selectedExercise.id} className={OPTION_CLASS}>
+                          {selectedExercise.name}
+                        </option>
                       ) : null}
                       {availableExercises.map((exercise) => (
-                        <option key={exercise.id} value={exercise.id} className="bg-white text-slate-900">
+                        <option key={exercise.id} value={exercise.id} className={OPTION_CLASS}>
                           {exercise.name}
                         </option>
                       ))}
@@ -387,7 +398,7 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
                       placeholder="Cantidad de series"
                       value={row.series}
                       onChange={(event) => updateExerciseRow(row.rowKey, "series", event.target.value)}
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-black"
+                      className={INPUT_CLASS}
                     />
 
                     <input
@@ -396,15 +407,17 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
                       placeholder="Descanso entre series (min)"
                       value={row.rest}
                       onChange={(event) => updateExerciseRow(row.rowKey, "rest", event.target.value)}
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-black"
+                      className={INPUT_CLASS}
                     />
 
                     <input
                       type="text"
                       placeholder="Comentario (opcional)"
                       value={row.comments}
-                      onChange={(event) => updateExerciseRow(row.rowKey, "comments", event.target.value)}
-                      className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2 text-black"
+                      onChange={(event) =>
+                        updateExerciseRow(row.rowKey, "comments", event.target.value)
+                      }
+                      className={`${INPUT_CLASS} md:col-span-2`}
                     />
                   </div>
                 </article>
@@ -413,19 +426,35 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
           </div>
         </div>
 
-        {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
-        {error ? <p className="text-sm text-rose-700">{error}</p> : null}
+        {message ? <p className="text-sm text-cyan-100">{message}</p> : null}
+        {error ? <p className="text-sm text-rose-200">{error}</p> : null}
 
         <div className="flex flex-wrap justify-end gap-2">
           <button
             type="submit"
             disabled={saving || loadingCatalogs}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20 disabled:opacity-60"
           >
             {saving ? "Guardando..." : "Guardar cambios"}
           </button>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={isEmptyConfirmOpen}
+        title="Rutina sin ejercicios"
+        description="La rutina quedara sin ejercicios. Deseas guardar los cambios de todos modos?"
+        confirmLabel="Guardar igual"
+        pendingLabel="Guardando..."
+        tone="neutral"
+        loading={saving}
+        onConfirm={saveRoutine}
+        onCancel={() => {
+          if (!saving) {
+            setIsEmptyConfirmOpen(false);
+          }
+        }}
+      />
     </section>
   );
 }

@@ -1,53 +1,32 @@
-﻿import Link from "next/link";
-import { cookies } from "next/headers";
-import CoachRoutinesList from "@/components/roles/CoachRoutinesList";
-import AthleteRoutineAssignment from "@/components/roles/AthleteRoutineAssignment";
+import Link from "next/link";
 import AthleteAssignedRoutinesList from "@/components/roles/AthleteAssignedRoutinesList";
-import CoachAthleteAssignment from "@/components/roles/CoachAthleteAssignment";
-import BackNavButton from "@/components/BackNavButton";
-import UserProfileEditor from "@/components/roles/UserProfileEditor";
 import AthleteCoachLinkCard from "@/components/roles/AthleteCoachLinkCard";
-import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
-import { getServerAccessToken } from "@/lib/auth-service";
-import { apiUrl } from "@/lib/api-url";
+import AthleteRoutineAssignment from "@/components/roles/AthleteRoutineAssignment";
+import BackNavButton from "@/components/BackNavButton";
+import CoachAthleteAssignment from "@/components/roles/CoachAthleteAssignment";
+import CoachRoutinesList from "@/components/roles/CoachRoutinesList";
+import UserProfileEditor from "@/components/roles/UserProfileEditor";
+import {
+  getAthleteAssignedRoutines,
+  getRolesStrict,
+  getRoutines,
+  getUserLinks,
+  getUsersStrict,
+} from "@/lib/backend";
+import {
+  getUserRoleName,
+  isAdminOrGymRoleName,
+  isAthleteRoleName,
+  isCoachRoleName,
+  resolveGymOwnerId,
+  sameId,
+} from "@/lib/roles";
+import { getRoutineOwnerCandidate, getRoutineOwnerId, isActiveRecord } from "@/lib/routines";
+import { canManageUser, getViewer, getViewerGymOwnerId, isSuperAdmin } from "@/lib/viewer";
 
-const ROLES_URL = apiUrl("/rol");
-const USERS_URL = apiUrl("/users");
-const ROUTINES_URL = apiUrl("/routine");
-const USER_LINKS_URL = apiUrl("/users/link");
-const ATHLETE_ASSIGNED_ROUTINES_URL = apiUrl("/routine/assign/athlete");
-
-async function fetchList(url, fallbackMessage, token) {
-  const response = await fetch(url, {
-    cache: "no-store",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-  const json = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(json?.message || fallbackMessage);
-  }
-
-  return Array.isArray(json?.data) ? json.data : [];
-}
-
-async function fetchListSafe(url, token) {
-  const response = await fetch(url, {
-    cache: "no-store",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-
-  if (!response.ok) {
-    return [];
-  }
-
-  const json = await response.json().catch(() => ({}));
-  return Array.isArray(json?.data) ? json.data : [];
-}
+export const metadata = {
+  title: "Perfil de usuario",
+};
 
 function formatDate(value) {
   if (!value) {
@@ -55,6 +34,7 @@ function formatDate(value) {
   }
 
   const date = new Date(value);
+
   if (Number.isNaN(date.getTime())) {
     return "Sin dato";
   }
@@ -62,407 +42,202 @@ function formatDate(value) {
   return date.toLocaleDateString("es-AR");
 }
 
-function isAthleteRoleName(value) {
-  return ["athlete", "atleta"].includes(String(value || "").trim().toLowerCase());
-}
+/**
+ * Rutinas que se le pueden asignar a este atleta, con la misma regla que aplica
+ * /api/routines/assign: propias, o del mismo gimnasio que el atleta.
+ * Que la UI y la API usen el mismo criterio evita ofrecer acciones que fallan.
+ */
+function buildAssignableRoutines({ routines, usersById, viewer, athlete }) {
+  const athleteGymOwnerId = resolveGymOwnerId(athlete);
+  const groups = { own: [], gym: [], others: [] };
+  const assignable = [];
 
-function isAdminOrGymRoleName(value) {
-  return ["admin", "administrador", "gym", "gimnasio"].includes(
-    String(value || "").trim().toLowerCase()
-  );
-}
+  for (const routine of routines) {
+    const ownerId = getRoutineOwnerId(routine);
 
-function isGymRoleName(value) {
-  return ["gym", "gimnasio"].includes(String(value || "").trim().toLowerCase());
-}
+    if (!ownerId) {
+      continue;
+    }
 
-function resolveGymOwnerId(candidate) {
-  if (!candidate) {
-    return null;
+    const owner = usersById.get(String(ownerId)) || getRoutineOwnerCandidate(routine);
+    const ownerGymOwnerId = resolveGymOwnerId(owner);
+
+    const isVisible =
+      isSuperAdmin(viewer) ||
+      sameId(ownerId, viewer.id) ||
+      sameId(ownerId, athleteGymOwnerId) ||
+      sameId(ownerGymOwnerId, athleteGymOwnerId);
+
+    if (!isVisible) {
+      continue;
+    }
+
+    assignable.push(routine);
+
+    if (sameId(ownerId, viewer.id)) {
+      groups.own.push(routine);
+      continue;
+    }
+
+    if (sameId(ownerId, athleteGymOwnerId) || isAdminOrGymRoleName(getUserRoleName(owner))) {
+      groups.gym.push(routine);
+      continue;
+    }
+
+    groups.others.push(routine);
   }
 
-  const roleName = candidate?.Rol?.name || "";
-  if (isAdminOrGymRoleName(roleName)) {
-    const ownId = Number(candidate?.id);
-    return Number.isFinite(ownId) && ownId > 0 ? ownId : null;
-  }
-
-  const ownerId = Number(candidate?.idAdminOwner);
-  return Number.isFinite(ownerId) && ownerId > 0 ? ownerId : null;
-}
-
-function getRoutineOwnerCandidate(routine) {
-  return (
-    routine?.creator ||
-    routine?.Creator ||
-    routine?.User ||
-    routine?.user ||
-    routine?.Owner ||
-    routine?.owner ||
-    routine?.Coach ||
-    routine?.coach ||
-    null
-  );
-}
-
-function getOwnerRoleName(ownerUser, ownerFromRoutine) {
-  return String(
-    ownerUser?.Rol?.name ||
-    ownerFromRoutine?.Rol?.name ||
-    ownerFromRoutine?.role?.name ||
-    ownerFromRoutine?.Role?.name ||
-    ""
-  ).trim().toLowerCase();
-}
-
-async function fetchAthleteAssignedRoutines(athleteId, token) {
-  const response = await fetch(`${ATHLETE_ASSIGNED_ROUTINES_URL}${athleteId}`, {
-    cache: "no-store",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-  const json = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(json?.message || "No se pudieron cargar las rutinas asignadas al atleta.");
-  }
-
-  return Array.isArray(json?.data) ? json.data : [];
+  return { assignable, groups };
 }
 
 export default async function UserProfilePage({ params, searchParams }) {
   const { roleId, userId } = await params;
   const { coachId, from } = await searchParams;
-  const normalizedCoachId = Number(coachId);
   const cameFromRoutineDetail = String(from || "").trim().toLowerCase() === "routine";
-  let viewerRoleKey = "unknown";
-  let viewerUserId = null;
-  let viewerRoleName = "";
 
   let errorMessage = "";
+  let viewerRoleKey = "unknown";
   let role = null;
   let user = null;
-  let users = [];
   let userRoleName = "";
   let athleteRoleId = null;
-  let routines = [];
-  let userLinks = [];
   let coachRoutines = [];
   let assignedAthletes = [];
-  let athleteAssignedRoutines = [];
   let availableAthletes = [];
+  let assignedCoaches = [];
+  let availableCoaches = [];
+  let athleteAssignedRoutines = [];
+  let assignableRoutines = [];
+  let routineGroups = { own: [], gym: [], others: [] };
+  let canAssignRoutines = false;
 
   try {
-    const cookieStore = await cookies();
-    const token = await getServerAccessToken();
+    const viewer = await getViewer();
 
-    if (!token) {
+    if (!viewer) {
       throw new Error("No autenticado.");
     }
 
-    const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
-    viewerRoleKey = normalizeRoleKey(sessionUser?.roleName);
-    viewerUserId = Number(sessionUser?.id) || null;
-    viewerRoleName = String(sessionUser?.roleName || "").trim().toLowerCase();
+    viewerRoleKey = viewer.roleKey;
 
-    // Roles y usuarios son el minimo necesario para renderizar el perfil.
-    const [roles, fetchedUsers] = await Promise.all([
-      fetchList(ROLES_URL, "No se pudieron cargar los roles.", token),
-      fetchList(USERS_URL, "No se pudieron cargar los usuarios.", token),
+    const [roles, users, gymOwnerId] = await Promise.all([
+      getRolesStrict(viewer.token),
+      getUsersStrict(viewer.token),
+      getViewerGymOwnerId(),
     ]);
-    users = fetchedUsers;
-
-    // Estos recursos pueden fallar por permisos de rol; la vista sigue operativa con estados vacios.
-    const [fetchedRoutines, fetchedUserLinks] = await Promise.all([
-      fetchListSafe(ROUTINES_URL, token),
-      fetchListSafe(USER_LINKS_URL, token),
-    ]);
-    routines = fetchedRoutines;
-    userLinks = fetchedUserLinks;
 
     role = roles.find((item) => String(item?.id) === String(roleId)) || null;
-    const athleteRole = roles.find((item) => isAthleteRoleName(item?.name));
-    athleteRoleId = Number(athleteRole?.id) || null;
+    athleteRoleId = Number(roles.find((item) => isAthleteRoleName(item?.name))?.id) || null;
     user = users.find((item) => String(item?.id) === String(userId)) || null;
-    userRoleName = user?.Rol?.name || role?.name || "";
 
-    const isCoach = userRoleName.trim().toLowerCase() === "coach";
+    if (!user) {
+      throw new Error(`No se encontro el usuario #${userId}.`);
+    }
 
-    if (isCoach && user) {
-      coachRoutines = routines.filter((routine) => String(routine?.idUser) === String(user.id));
-      assignedAthletes = userLinks.filter((link) => String(link?.idCoach) === String(user.id));
+    if (!canManageUser({ viewer, viewerGymOwnerId: gymOwnerId, targetUser: user })) {
+      throw new Error("No tenes permisos para ver este perfil.");
+    }
 
-      const assignedAthleteIds = new Set(assignedAthletes.map((link) => String(link?.idAthlete)));
+    userRoleName = getUserRoleName(user) || role?.name || "";
+
+    const usersById = new Map(users.map((item) => [String(item?.id), item]));
+    const isCoachProfile = isCoachRoleName(userRoleName);
+    const isAthleteProfile = isAthleteRoleName(userRoleName);
+
+    if (isCoachProfile) {
+      const [routines, userLinks] = await Promise.all([
+        getRoutines(viewer.token),
+        getUserLinks(viewer.token),
+      ]);
+
+      const coachGymOwnerId = resolveGymOwnerId(user);
+
+      coachRoutines = routines.filter((routine) => sameId(getRoutineOwnerId(routine), user.id));
+      assignedAthletes = userLinks.filter(
+        (link) => sameId(link?.idCoach || link?.coach?.id, user.id) && isActiveRecord(link)
+      );
+
+      const assignedAthleteIds = new Set(
+        assignedAthletes.map((link) => String(link?.idAthlete || link?.athlete?.id))
+      );
+
+      // Solo atletas del mismo gimnasio que el coach.
       availableAthletes = users.filter((candidate) => {
-        if (!candidate || String(candidate?.id) === String(user.id)) {
+        if (sameId(candidate?.id, user.id) || assignedAthleteIds.has(String(candidate?.id))) {
           return false;
         }
 
-        const roleName = candidate?.Rol?.name || "";
-        if (!isAthleteRoleName(roleName)) {
+        if (!isAthleteRoleName(getUserRoleName(candidate))) {
           return false;
         }
 
-        return !assignedAthleteIds.has(String(candidate?.id));
+        return !coachGymOwnerId || sameId(resolveGymOwnerId(candidate), coachGymOwnerId);
       });
     }
 
-    if (!isCoach && user && isAthleteRoleName(userRoleName)) {
-      try {
-        athleteAssignedRoutines = await fetchAthleteAssignedRoutines(user.id, token);
-      } catch {
-        athleteAssignedRoutines = [];
-      }
+    if (isAthleteProfile) {
+      const [routines, userLinks, assigned] = await Promise.all([
+        getRoutines(viewer.token),
+        getUserLinks(viewer.token),
+        getAthleteAssignedRoutines(viewer.token, user.id),
+      ]);
+
+      athleteAssignedRoutines = assigned;
+
+      const athleteGymOwnerId = resolveGymOwnerId(user);
+      const athleteLinks = userLinks.filter(
+        (link) => sameId(link?.idAthlete || link?.athlete?.id, user.id) && isActiveRecord(link)
+      );
+
+      assignedCoaches = Array.from(
+        new Map(
+          athleteLinks
+            .map((link) => {
+              const linkedCoachId = Number(link?.idCoach || link?.coach?.id);
+
+              if (!Number.isFinite(linkedCoachId) || linkedCoachId <= 0) {
+                return null;
+              }
+
+              const coachUser = link?.coach || usersById.get(String(linkedCoachId)) || null;
+
+              return [
+                String(linkedCoachId),
+                {
+                  id: linkedCoachId,
+                  username: coachUser?.username || `Coach #${linkedCoachId}`,
+                  email: coachUser?.email || "",
+                },
+              ];
+            })
+            .filter(Boolean)
+        ).values()
+      );
+
+      const assignedCoachIds = new Set(assignedCoaches.map((item) => Number(item.id)));
+
+      availableCoaches = users.filter((candidate) => {
+        if (!isCoachRoleName(getUserRoleName(candidate)) || assignedCoachIds.has(Number(candidate?.id))) {
+          return false;
+        }
+
+        return !athleteGymOwnerId || sameId(resolveGymOwnerId(candidate), athleteGymOwnerId);
+      });
+
+      const built = buildAssignableRoutines({ routines, usersById, viewer, athlete: user });
+      assignableRoutines = built.assignable;
+      routineGroups = built.groups;
+      canAssignRoutines = true;
     }
   } catch (error) {
-    errorMessage = error.message;
+    errorMessage = error?.message || "No se pudo cargar el perfil.";
   }
 
-  if (!errorMessage && !user) {
-    errorMessage = `No se encontro el usuario #${userId}.`;
-  }
-
-  const isCoachProfile = userRoleName.trim().toLowerCase() === "coach";
+  const isCoachProfile = isCoachRoleName(userRoleName);
   const isAthleteProfile = isAthleteRoleName(userRoleName);
-  const isViewerGym = isGymRoleName(viewerRoleName);
-  const viewerUser = users.find((item) => Number(item?.id) === Number(viewerUserId)) || null;
-  const viewerGymOwnerId = resolveGymOwnerId(viewerUser);
-  const fallbackCoachId = viewerRoleKey === "coach" ? viewerUserId : null;
-  const fallbackGymId = isViewerGym ? viewerUserId : null;
-  const effectiveCoachId =
-    Number.isFinite(normalizedCoachId) && normalizedCoachId > 0
-      ? normalizedCoachId
-      : Number.isFinite(fallbackCoachId) && fallbackCoachId > 0
-        ? fallbackCoachId
-        : Number.isFinite(fallbackGymId) && fallbackGymId > 0
-          ? fallbackGymId
-        : null;
-  const backFallbackHref = effectiveCoachId
-    ? `/inicio/roles-usuarios/${roleId}/${effectiveCoachId}`
+  const backFallbackHref = coachId
+    ? `/inicio/roles-usuarios/${roleId}/${coachId}`
     : `/inicio/roles-usuarios/${roleId}`;
-  const selectedCoachUser = effectiveCoachId
-    ? users.find((item) => Number(item?.id) === Number(effectiveCoachId)) || null
-    : null;
-  const athleteGymOwnerId = Number(user?.idAdminOwner) || Number(user?.adminOwner?.id) || null;
-  const selectedCoachGymOwnerId = resolveGymOwnerId(selectedCoachUser);
-  const targetGymOwnerId = selectedCoachGymOwnerId || athleteGymOwnerId || null;
-  const assignableRoutinesWithinGym = routines.filter((routine) => {
-    const routineOwnerId = Number(routine?.idUser);
-    if (!Number.isFinite(routineOwnerId) || routineOwnerId <= 0) {
-      return false;
-    }
-
-    const ownerUser = users.find((item) => Number(item?.id) === routineOwnerId) || null;
-    const ownerFromRoutine = getRoutineOwnerCandidate(routine);
-    const ownerRoleName = getOwnerRoleName(ownerUser, ownerFromRoutine);
-    const ownerGymOwnerId = resolveGymOwnerId(ownerUser) || resolveGymOwnerId(ownerFromRoutine);
-
-    if (viewerRoleKey === "coach") {
-      if (routineOwnerId === Number(viewerUserId)) {
-        return true;
-      }
-
-      if (targetGymOwnerId && routineOwnerId === Number(targetGymOwnerId)) {
-        return true;
-      }
-
-      if (ownerRoleName === "coach" && targetGymOwnerId && ownerGymOwnerId === Number(targetGymOwnerId)) {
-        return true;
-      }
-
-      if (ownerRoleName === "coach") {
-        return true;
-      }
-
-      // Mantener consistencia con la vista de rutinas creadas:
-      // si la rutina es visible para el coach, permitirla para asignacion.
-      return true;
-    }
-
-    if (viewerRoleKey === "admin") {
-      if (routineOwnerId === Number(viewerUserId)) {
-        return true;
-      }
-
-      if (ownerRoleName === "coach" && ownerGymOwnerId === Number(viewerUserId)) {
-        return true;
-      }
-
-      return false;
-    }
-
-    if (routineOwnerId === Number(effectiveCoachId)) {
-      return true;
-    }
-
-    if (targetGymOwnerId && routineOwnerId === Number(targetGymOwnerId)) {
-      return true;
-    }
-
-    if (targetGymOwnerId && resolveGymOwnerId(ownerUser) === Number(targetGymOwnerId)) {
-      return true;
-    }
-
-    return targetGymOwnerId && resolveGymOwnerId(ownerFromRoutine) === Number(targetGymOwnerId);
-  });
-  const athleteLink =
-    isAthleteProfile && user
-      ? userLinks.find((link) => Number(link?.idAthlete) === Number(user.id)) ||
-        userLinks.find((link) => Number(link?.athlete?.id) === Number(user.id)) ||
-        null
-      : null;
-  const athleteCoachLinks =
-    isAthleteProfile && user
-      ? userLinks.filter(
-          (link) =>
-            (Number(link?.idAthlete) === Number(user.id) || Number(link?.athlete?.id) === Number(user.id)) &&
-            link?.isDeleted !== true &&
-            link?.isActive !== false
-        )
-      : [];
-  const assignedCoaches = Array.from(
-    new Map(
-      athleteCoachLinks
-        .map((link) => {
-          const coachId = Number(link?.idCoach || link?.coach?.id);
-          if (!Number.isFinite(coachId) || coachId <= 0) {
-            return null;
-          }
-
-          const coachUser =
-            link?.coach ||
-            users.find((item) => Number(item?.id) === coachId) ||
-            null;
-
-          return [
-            String(coachId),
-            {
-              id: coachId,
-              username: coachUser?.username || `Coach #${coachId}`,
-              email: coachUser?.email || "",
-            },
-          ];
-        })
-        .filter(Boolean)
-    ).values()
-  );
-  const assignedCoachIds = new Set(assignedCoaches.map((coachItem) => Number(coachItem.id)));
-  const availableCoaches = users.filter((candidate) => {
-    const candidateRoleName = String(candidate?.Rol?.name || "").trim().toLowerCase();
-    if (candidateRoleName !== "coach") {
-      return false;
-    }
-
-    const candidateId = Number(candidate?.id);
-    if (!Number.isFinite(candidateId) || candidateId <= 0) {
-      return false;
-    }
-
-    if (assignedCoachIds.has(candidateId)) {
-      return false;
-    }
-
-    if (!targetGymOwnerId) {
-      return true;
-    }
-
-    return resolveGymOwnerId(candidate) === Number(targetGymOwnerId);
-  });
-  const assignedCoachId = Number(athleteLink?.idCoach) || null;
-  const assignedCoachUser =
-    athleteLink?.coach ||
-    (assignedCoachId ? users.find((item) => Number(item?.id) === assignedCoachId) || null : null);
-
-  const assignmentRoutineGroups = (() => {
-    const source = Array.isArray(assignableRoutinesWithinGym) ? assignableRoutinesWithinGym : [];
-    const own = [];
-    const others = [];
-    const gym = [];
-    const groupGymOwnerId = Number(targetGymOwnerId) || Number(viewerGymOwnerId) || null;
-
-    for (const routine of source) {
-      const ownerId = Number(routine?.idUser);
-      if (!Number.isFinite(ownerId) || ownerId <= 0) {
-        continue;
-      }
-
-      const ownerUser = users.find((item) => Number(item?.id) === ownerId) || null;
-      const ownerFromRoutine = getRoutineOwnerCandidate(routine);
-      const ownerRoleName = getOwnerRoleName(ownerUser, ownerFromRoutine);
-      const ownerGymOwnerId = resolveGymOwnerId(ownerUser) || resolveGymOwnerId(ownerFromRoutine);
-
-      if (viewerRoleKey === "coach") {
-        if (ownerId === Number(viewerUserId)) {
-          own.push(routine);
-          continue;
-        }
-
-        if (groupGymOwnerId && ownerId === Number(groupGymOwnerId)) {
-          gym.push(routine);
-          continue;
-        }
-
-        if (ownerRoleName === "coach" && ownerGymOwnerId && groupGymOwnerId && ownerGymOwnerId === groupGymOwnerId) {
-          others.push(routine);
-          continue;
-        }
-
-        if (ownerRoleName === "coach") {
-          others.push(routine);
-          continue;
-        }
-
-        if (isAdminOrGymRoleName(ownerRoleName) && groupGymOwnerId && ownerId === groupGymOwnerId) {
-          gym.push(routine);
-          continue;
-        }
-
-        if (ownerGymOwnerId && groupGymOwnerId && ownerGymOwnerId === groupGymOwnerId) {
-          others.push(routine);
-          continue;
-        }
-
-        // Fallback consistente con "Rutinas creadas": clasificar en otros coaches
-        // para no ocultar rutinas visibles por metadatos incompletos.
-        others.push(routine);
-        continue;
-      }
-
-      if (viewerRoleKey === "admin") {
-        if (ownerId === Number(viewerUserId)) {
-          own.push(routine);
-          continue;
-        }
-
-        if (ownerRoleName === "coach" && ownerGymOwnerId && ownerGymOwnerId === Number(viewerUserId)) {
-          others.push(routine);
-          continue;
-        }
-      }
-    }
-
-    if (viewerRoleKey === "coach") {
-      return {
-        own,
-        others,
-        gym,
-      };
-    }
-
-    if (viewerRoleKey === "admin") {
-      return {
-        own,
-        others,
-      };
-    }
-
-    return {
-      own: source,
-      others: [],
-      gym: [],
-    };
-  })();
 
   return (
     <section className="space-y-6 text-slate-100">
@@ -501,7 +276,6 @@ export default async function UserProfilePage({ params, searchParams }) {
             <AthleteCoachLinkCard
               roleId={roleId}
               athleteId={user.id}
-              coach={assignedCoachUser}
               assignedCoaches={assignedCoaches}
               availableCoaches={availableCoaches}
             />
@@ -512,63 +286,64 @@ export default async function UserProfilePage({ params, searchParams }) {
       ) : null}
 
       {!errorMessage && user && isCoachProfile ? (
-        <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-          <h2 className="text-lg font-bold text-white">Rutinas del coach</h2>
-          <CoachRoutinesList
-            roleId={roleId}
-            userId={user.id}
-            routines={coachRoutines}
-          />
-        </section>
-      ) : null}
+        <>
+          <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+            <h2 className="text-lg font-bold text-white">Rutinas del coach</h2>
+            <CoachRoutinesList roleId={roleId} userId={user.id} routines={coachRoutines} />
+          </section>
 
-      {!errorMessage && user && isCoachProfile ? (
-        <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-          <h2 className="text-lg font-bold text-white">Atletas asignados</h2>
-          <CoachAthleteAssignment coachId={user.id} athletes={availableAthletes} athleteRoleId={athleteRoleId} />
-          {assignedAthletes.length === 0 ? (
-            <p className="mt-3 text-sm text-white/75">Este coach no tiene atletas asignados.</p>
-          ) : (
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-              {assignedAthletes.map((link) => (
-                <article
-                  key={link.id}
-                  className="rounded-2xl border border-white/15 bg-[#0f2a46] p-4 shadow-[0_6px_18px_rgba(0,0,0,0.22)]"
-                >
-                  <p className="text-xs uppercase tracking-wide text-white/60">Vinculo #{link.id}</p>
-                  <p className="mt-1 font-semibold text-white">
-                    {link?.athlete?.username || `Atleta #${link.idAthlete}`}
-                  </p>
-                  <p className="mt-2 text-sm text-white/80">
-                    Email: {link?.athlete?.email || "Sin dato"}
-                  </p>
-                  <p className="text-sm text-white/80">
-                    Disponibilidad: {link?.athlete?.weeklyAvailability || "Sin dato"}
-                  </p>
-                  <p className="text-sm text-white/80">
-                    Alta del vinculo: {formatDate(link?.createdAt)}
-                  </p>
-                  <Link
-                    href={`/inicio/roles-usuarios/${roleId}/${link.idAthlete}?coachId=${user.id}`}
-                    className="mt-3 inline-block rounded-lg border border-cyan-300/40 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
+          <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+            <h2 className="text-lg font-bold text-white">Atletas asignados</h2>
+            <CoachAthleteAssignment
+              coachId={user.id}
+              athletes={availableAthletes}
+              athleteRoleId={athleteRoleId}
+            />
+            {assignedAthletes.length === 0 ? (
+              <p className="mt-3 text-sm text-white/75">Este coach no tiene atletas asignados.</p>
+            ) : (
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                {assignedAthletes.map((link) => (
+                  <article
+                    key={link.id}
+                    className="rounded-2xl border border-white/15 bg-[#0f2a46] p-4 shadow-[0_6px_18px_rgba(0,0,0,0.22)]"
                   >
-                    Ir al perfil del atleta
-                  </Link>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+                    <p className="text-xs uppercase tracking-wide text-white/60">Vinculo #{link.id}</p>
+                    <p className="mt-1 font-semibold text-white">
+                      {link?.athlete?.username || `Atleta #${link.idAthlete}`}
+                    </p>
+                    <p className="mt-2 text-sm text-white/80">
+                      Email: {link?.athlete?.email || "Sin dato"}
+                    </p>
+                    <p className="text-sm text-white/80">
+                      Disponibilidad: {link?.athlete?.weeklyAvailability || "Sin dato"}
+                    </p>
+                    <p className="text-sm text-white/80">
+                      Alta del vinculo: {formatDate(link?.createdAt)}
+                    </p>
+                    {athleteRoleId ? (
+                      <Link
+                        href={`/inicio/roles-usuarios/${athleteRoleId}/${link.idAthlete}?coachId=${user.id}`}
+                        className="mt-3 inline-block rounded-lg border border-cyan-300/40 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
+                      >
+                        Ir al perfil del atleta
+                      </Link>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
       ) : null}
 
-      {!errorMessage && user && isAthleteProfile && effectiveCoachId ? (
+      {!errorMessage && user && isAthleteProfile && canAssignRoutines ? (
         <AthleteRoutineAssignment
           athleteId={user.id}
-          coachId={effectiveCoachId}
-          coachRoutines={assignableRoutinesWithinGym}
+          availableRoutines={assignableRoutines}
           assignedRoutines={athleteAssignedRoutines}
           viewerRoleKey={viewerRoleKey}
-          routineGroups={assignmentRoutineGroups}
+          routineGroups={routineGroups}
         />
       ) : null}
 
@@ -578,7 +353,7 @@ export default async function UserProfilePage({ params, searchParams }) {
           <AthleteAssignedRoutinesList
             roleId={roleId}
             athleteId={user.id}
-            coachId={effectiveCoachId || ""}
+            coachId={coachId || ""}
             assignments={athleteAssignedRoutines}
           />
         </section>

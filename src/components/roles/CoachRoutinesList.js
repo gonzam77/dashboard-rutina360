@@ -4,18 +4,24 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import RoutineEditButton from "@/components/roles/RoutineEditButton";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export default function CoachRoutinesList({ roleId, userId, routines }) {
   const router = useRouter();
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [loadingRoutineId, setLoadingRoutineId] = useState(null);
   const [error, setError] = useState("");
 
-  async function handleDeleteRoutine(routineId) {
-    setLoadingRoutineId(routineId);
+  async function handleDeleteRoutine() {
+    if (!pendingDelete) {
+      return;
+    }
+
+    setLoadingRoutineId(pendingDelete.id);
     setError("");
 
     try {
-      const response = await fetch(`/api/routines/${routineId}`, { method: "DELETE" });
+      const response = await fetch(`/api/routines/${pendingDelete.id}`, { method: "DELETE" });
       const json = await response.json().catch(() => ({}));
 
       if (!response.ok) {
@@ -28,6 +34,7 @@ export default function CoachRoutinesList({ roleId, userId, routines }) {
       setError("Error de conexion al eliminar rutina.");
     } finally {
       setLoadingRoutineId(null);
+      setPendingDelete(null);
     }
   }
 
@@ -57,7 +64,9 @@ export default function CoachRoutinesList({ roleId, userId, routines }) {
                 <RoutineEditButton routine={routine} />
                 <button
                   type="button"
-                  onClick={() => handleDeleteRoutine(routine.id)}
+                  onClick={() =>
+                    setPendingDelete({ id: routine.id, name: routine.name || `Rutina #${routine.id}` })
+                  }
                   disabled={loadingRoutineId === routine.id}
                   className="rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-60"
                 >
@@ -68,6 +77,21 @@ export default function CoachRoutinesList({ roleId, userId, routines }) {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Eliminar rutina"
+        description={`Vas a eliminar "${pendingDelete?.name}". Si esta asignada a algun atleta, tambien se quitara de su plan.`}
+        confirmLabel="Eliminar rutina"
+        pendingLabel="Eliminando..."
+        loading={loadingRoutineId !== null}
+        onConfirm={handleDeleteRoutine}
+        onCancel={() => {
+          if (loadingRoutineId === null) {
+            setPendingDelete(null);
+          }
+        }}
+      />
     </div>
   );
 }

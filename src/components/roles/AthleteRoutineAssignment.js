@@ -3,10 +3,15 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+const GROUP_LABELS = {
+  own: "Mias",
+  gym: "Del gym",
+  others: "Otros coaches",
+};
+
 export default function AthleteRoutineAssignment({
   athleteId,
-  coachId,
-  coachRoutines,
+  availableRoutines = [],
   assignedRoutines = [],
   viewerRoleKey = "unknown",
   routineGroups = null,
@@ -17,21 +22,23 @@ export default function AthleteRoutineAssignment({
   const [loadingAssign, setLoadingAssign] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const availableRoutines = useMemo(() => {
+
+  /** Rutinas del gimnasio que el atleta todavia no tiene asignadas. */
+  const unassignedRoutines = useMemo(() => {
     const assignedIds = new Set(
       (Array.isArray(assignedRoutines) ? assignedRoutines : [])
         .map((item) => Number(item?.idRoutine || item?.Routine?.id))
         .filter((id) => Number.isFinite(id) && id > 0)
     );
 
-    return (Array.isArray(coachRoutines) ? coachRoutines : []).filter((routine) => {
+    return (Array.isArray(availableRoutines) ? availableRoutines : []).filter((routine) => {
       const routineId = Number(routine?.id);
       return Number.isFinite(routineId) && routineId > 0 && !assignedIds.has(routineId);
     });
-  }, [assignedRoutines, coachRoutines]);
+  }, [assignedRoutines, availableRoutines]);
 
   const groupedAvailable = useMemo(() => {
-    const availableById = new Map(availableRoutines.map((routine) => [Number(routine?.id), routine]));
+    const availableById = new Map(unassignedRoutines.map((routine) => [Number(routine?.id), routine]));
     const groups = routineGroups && typeof routineGroups === "object" ? routineGroups : {};
 
     function mapGroup(groupItems) {
@@ -40,32 +47,29 @@ export default function AthleteRoutineAssignment({
         .filter(Boolean);
     }
 
-    const own = mapGroup(groups.own);
-    const others = mapGroup(groups.others);
-    const gym = mapGroup(groups.gym);
-    const all = availableRoutines;
+    return {
+      all: unassignedRoutines,
+      own: mapGroup(groups.own),
+      gym: mapGroup(groups.gym),
+      others: mapGroup(groups.others),
+    };
+  }, [routineGroups, unassignedRoutines]);
 
-    return { all, own, others, gym };
-  }, [availableRoutines, routineGroups]);
-
+  /** Solo se ofrecen los filtros que tienen rutinas: evita pestanas vacias. */
   const filterOptions = useMemo(() => {
     const options = [{ key: "all", label: "Todas" }];
 
-    if (viewerRoleKey === "coach") {
-      options.push(
-        { key: "own", label: "Mias" },
-        { key: "others", label: "Otros coaches" },
-        { key: "gym", label: "Gym" }
-      );
-    } else if (viewerRoleKey === "admin") {
-      options.push(
-        { key: "own", label: "Gym" },
-        { key: "others", label: "Coaches del gym" }
-      );
+    for (const key of ["own", "gym", "others"]) {
+      if (groupedAvailable[key].length > 0) {
+        options.push({
+          key,
+          label: key === "own" && viewerRoleKey === "admin" ? "Del gym" : GROUP_LABELS[key],
+        });
+      }
     }
 
     return options;
-  }, [viewerRoleKey]);
+  }, [groupedAvailable, viewerRoleKey]);
 
   const filteredRoutines = groupedAvailable[activeFilter] || groupedAvailable.all;
 
@@ -86,12 +90,14 @@ export default function AthleteRoutineAssignment({
       });
 
       const json = await response.json().catch(() => ({}));
+
       if (!response.ok) {
         setError(json?.message || "No se pudo asignar la rutina.");
         return;
       }
 
       setMessage("Rutina asignada correctamente.");
+      setSelectedRoutineId("");
       router.refresh();
     } catch {
       setError("Error de conexion al asignar rutina.");
@@ -103,6 +109,7 @@ export default function AthleteRoutineAssignment({
   return (
     <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
       <h2 className="text-lg font-semibold text-white">Gestion de rutina del atleta</h2>
+
       {filterOptions.length > 1 ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {filterOptions.map((option) => (
@@ -125,25 +132,31 @@ export default function AthleteRoutineAssignment({
         </div>
       ) : null}
 
-      {coachRoutines.length === 0 ? (
-        <p className="mt-3 text-sm text-white/75">No hay rutinas disponibles del coach o del gimnasio para asignar.</p>
-      ) : availableRoutines.length === 0 ? (
-        <p className="mt-3 text-sm text-white/75">Este atleta ya tiene asignadas todas las rutinas disponibles.</p>
+      {availableRoutines.length === 0 ? (
+        <p className="mt-3 text-sm text-white/75">
+          No hay rutinas del coach o del gimnasio disponibles para asignar.
+        </p>
+      ) : unassignedRoutines.length === 0 ? (
+        <p className="mt-3 text-sm text-white/75">
+          Este atleta ya tiene asignadas todas las rutinas disponibles.
+        </p>
       ) : filteredRoutines.length === 0 ? (
         <p className="mt-3 text-sm text-white/75">No hay rutinas disponibles en este filtro.</p>
       ) : (
         <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={handleAssignRoutine}>
           <label className="flex min-w-[260px] flex-col text-sm text-white/85">
-            Rutina disponible (coach/gym)
+            Rutina disponible
             <select
               required
               value={selectedRoutineId}
               onChange={(event) => setSelectedRoutineId(event.target.value)}
               className="mt-1 rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white"
             >
-              <option value="" disabled className="bg-white text-slate-900">Seleccionar rutina</option>
+              <option value="" disabled className="bg-[#0f2a46] text-white">
+                Seleccionar rutina
+              </option>
               {filteredRoutines.map((routine) => (
-                <option key={routine.id} value={routine.id} className="bg-white text-slate-900">
+                <option key={routine.id} value={routine.id} className="bg-[#0f2a46] text-white">
                   {routine.name || `Rutina #${routine.id}`} (ID {routine.id})
                 </option>
               ))}

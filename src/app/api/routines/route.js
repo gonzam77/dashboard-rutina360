@@ -1,65 +1,78 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { getServerAccessToken } from "@/lib/auth-service";
-import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
-import { apiUrl } from "@/lib/api-url";
+import { apiRequest, PATHS } from "@/lib/backend";
+import { jsonError, parsePositiveInt, readJsonBody, requireViewer } from "@/lib/api-guard";
+import { sameId } from "@/lib/roles";
+import { isCoach, isSuperAdmin } from "@/lib/viewer";
 
-const ROUTINES_URL = apiUrl("/routine");
+function normalizeExercises(exercises) {
+  const normalized = [];
+
+  for (const item of Array.isArray(exercises) ? exercises : []) {
+    const idEjercice = parsePositiveInt(item?.idEjercice);
+    const series = parsePositiveInt(item?.series);
+    const rest = Number(item?.rest);
+
+    if (!idEjercice || !series || !Number.isFinite(rest) || rest < 0) {
+      return { error: "Los ejercicios deben tener idEjercice, series y rest validos." };
+    }
+
+    normalized.push({
+      idEjercice,
+      series,
+      rest,
+      comments: String(item?.comments || "").trim(),
+    });
+  }
+
+  return { exercises: normalized };
+}
 
 export async function POST(request) {
   try {
-    const cookieStore = await cookies();
-    const token = await getServerAccessToken({ allowRefresh: false });
-
-    if (!token) {
-      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    const { viewer, error } = await requireViewer();
+    if (error) {
+      return error;
     }
 
-    const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
-    const roleKey = normalizeRoleKey(sessionUser?.roleName);
-    const body = await request.json();
+    if (!isCoach(viewer) && viewer.roleKey !== "admin" && !isSuperAdmin(viewer)) {
+      return jsonError("Solo gym, coach o super admin pueden crear rutinas.", 403);
+    }
 
+    const body = await readJsonBody(request);
     const name = body?.name?.trim();
-    const idUser = Number(body?.idUser);
-    const order = Number(body?.order);
-    const time = Number(body?.time);
-    const exercises = Array.isArray(body?.exercises) ? body.exercises : [];
+    const idUser = parsePositiveInt(body?.idUser);
+    const order = parsePositiveInt(body?.order);
+    const time = parsePositiveInt(body?.time);
+    const { exercises, error: exercisesError } = normalizeExercises(body?.exercises);
+
+    if (exercisesError) {
+      return jsonError(exercisesError, 400);
+    }
 
     if (!name || !idUser || !order || !time || exercises.length === 0) {
-      return NextResponse.json(
-        { message: "name, idUser, order, time y exercises son obligatorios." },
-        { status: 400 }
-      );
+      return jsonError("name, idUser, order, time y exercises son obligatorios.", 400);
     }
 
-    if (roleKey !== "coach" && roleKey !== "admin") {
-      return NextResponse.json(
-        { message: "Solo gym o coach pueden crear rutinas." },
-        { status: 403 }
-      );
+    // Una rutina se crea siempre a nombre propio: el idUser del cliente no manda.
+    if (!isSuperAdmin(viewer) && !sameId(idUser, viewer.id)) {
+      return jsonError("Solo podes crear rutinas a tu propio nombre.", 403);
     }
 
-    const response = await fetch(ROUTINES_URL, {
+    const { ok, status, json } = await apiRequest(PATHS.routines, {
+      token: viewer.token,
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ name, idUser, order, time, exercises }),
-      cache: "no-store",
+      body: { name, idUser, order, time, exercises },
     });
 
-    const json = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
+    if (!ok) {
       return NextResponse.json(
         { message: json?.message || "No se pudo crear la rutina." },
-        { status: response.status }
+        { status }
       );
     }
 
     return NextResponse.json({ ok: true, data: json?.data || null });
   } catch {
-    return NextResponse.json({ message: "Error al crear la rutina." }, { status: 500 });
+    return jsonError("Error al crear la rutina.", 500);
   }
 }

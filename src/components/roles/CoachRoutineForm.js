@@ -76,6 +76,11 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
     };
   }, []);
 
+  const exerciseNameById = useMemo(
+    () => new Map(exercises.map((exercise) => [String(exercise.id), exercise.name])),
+    [exercises]
+  );
+
   const exercisesByGroup = useMemo(() => {
     const map = new Map();
 
@@ -300,7 +305,8 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
               confirmedExercises.map((item, index) => (
                 <div key={`confirmed-${index}`} className="flex items-center justify-between rounded-lg border border-white/15 bg-[#17385a] px-3 py-2 text-sm">
                   <p className="text-white/85">
-                    #{index + 1} - Ejercicio ID {item.idEjercice} - Series {item.series} - Descanso {item.rest} min
+                    #{index + 1} - {exerciseNameById.get(String(item.idEjercice)) || `Ejercicio #${item.idEjercice}`}{" "}
+                    - Series {item.series} - Descanso {item.rest} min
                   </p>
                   <button
                     type="button"

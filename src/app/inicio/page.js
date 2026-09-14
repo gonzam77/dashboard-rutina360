@@ -1,10 +1,13 @@
 ﻿import Link from "next/link";
-import { cookies } from "next/headers";
-import { firstNonEmptyString, normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
+import { getRoles } from "@/lib/backend";
+import { isAthleteRoleName } from "@/lib/roles";
+import { getViewer } from "@/lib/viewer";
 
-function buildRoleHome(roleKey, profileHref, roleName) {
-  const normalizedRoleName = String(roleName || "").trim().toLowerCase();
-  const isGymRole = normalizedRoleName === "gym" || normalizedRoleName === "gimnasio";
+export const metadata = {
+  title: "Panel",
+};
+
+function buildRoleHome({ roleKey, isGymRole, profileHref, athletesHref }) {
 
   if (roleKey === "super_admin") {
     return {
@@ -49,8 +52,7 @@ function buildRoleHome(roleKey, profileHref, roleName) {
       description: "Administra tus atletas y tus rutinas activas.",
       actions: [
         ...(profileHref ? [{ href: profileHref, label: "Ir a mi perfil" }] : []),
-        { href: profileHref || "/inicio/roles-usuarios", label: "Ver y asignar atletas" },
-        { href: "/inicio/roles-usuarios/4", label: "Ver atletas del gym" },
+        ...(athletesHref ? [{ href: athletesHref, label: "Ver atletas del gym" }] : []),
         { href: "/inicio/rutinas-creadas", label: "Mis rutinas" },
       ],
     };
@@ -91,17 +93,23 @@ function getActionStyle(index) {
 }
 
 export default async function InicioPage() {
-  const cookieStore = await cookies();
-  const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
-  const roleName = firstNonEmptyString([sessionUser?.roleName]);
-  const roleKey = normalizeRoleKey(roleName);
-  const ownRoleId = Number(sessionUser?.idRole);
-  const ownUserId = Number(sessionUser?.id);
+  const viewer = await getViewer();
+  const roleKey = viewer?.roleKey || "unknown";
+  const ownRoleId = Number(viewer?.roleId);
+  const ownUserId = Number(viewer?.id);
   const profileHref =
-    Number.isFinite(ownRoleId) && ownRoleId > 0 && Number.isFinite(ownUserId) && ownUserId > 0
-      ? `/inicio/roles-usuarios/${ownRoleId}/${ownUserId}`
-      : "";
-  const view = buildRoleHome(roleKey, profileHref, roleName);
+    ownRoleId > 0 && ownUserId > 0 ? `/inicio/roles-usuarios/${ownRoleId}/${ownUserId}` : "";
+
+  const roles = viewer ? await getRoles(viewer.token) : [];
+  const athleteRoleId = Number(roles.find((role) => isAthleteRoleName(role?.name))?.id) || null;
+  const athletesHref = athleteRoleId ? `/inicio/roles-usuarios/${athleteRoleId}` : "";
+
+  const view = buildRoleHome({
+    roleKey,
+    isGymRole: Boolean(viewer?.isGym),
+    profileHref,
+    athletesHref,
+  });
 
   return (
     <div className="space-y-6">

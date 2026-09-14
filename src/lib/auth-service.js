@@ -1,13 +1,12 @@
 import { cookies } from "next/headers";
-import { apiUrl } from "@/lib/api-url";
+import { apiRequest } from "@/lib/backend";
+import { isTokenExpiredOrNear, tokenMaxAgeSeconds } from "@/lib/jwt";
 
-const API_BASE = apiUrl();
 const ACCESS_COOKIE = "token";
 const REFRESH_COOKIE = "refresh_token";
 const SESSION_USER_COOKIE = "session_user";
 const ACCESS_TOKEN_FALLBACK_MAX_AGE = 60 * 60 * 8;
 const REFRESH_TOKEN_FALLBACK_MAX_AGE = 60 * 60 * 24 * 60;
-
 
 function cookieOptions(maxAgeSeconds) {
   const secureCookies = process.env.AUTH_COOKIE_SECURE === "true";
@@ -49,48 +48,11 @@ function firstRefreshToken(data) {
 
   for (const value of candidates) {
     if (typeof value === "string" && value.trim()) {
-      return value.trim();
+      return value.replace(/^Bearer\s+/i, "").trim();
     }
   }
 
   return "";
-}
-
-function parseJwtPayload(token) {
-  try {
-    const parts = String(token || "").split(".");
-    if (parts.length < 2) {
-      return null;
-    }
-
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const normalized = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-    const payloadJson = Buffer.from(normalized, "base64").toString("utf8");
-    return JSON.parse(payloadJson);
-  } catch {
-    return null;
-  }
-}
-
-function isTokenExpiredOrNear(token, skewSeconds = 20) {
-  const payload = parseJwtPayload(token);
-  const exp = Number(payload?.exp);
-  if (!Number.isFinite(exp)) {
-    return false;
-  }
-
-  return Date.now() >= (exp - skewSeconds) * 1000;
-}
-
-function tokenMaxAgeSeconds(token, fallbackSeconds) {
-  const payload = parseJwtPayload(token);
-  const exp = Number(payload?.exp);
-
-  if (!Number.isFinite(exp)) {
-    return fallbackSeconds;
-  }
-
-  return Math.max(0, Math.floor(exp - Date.now() / 1000));
 }
 
 export async function clearAuthCookies() {
@@ -130,29 +92,26 @@ export async function refreshWithCookie() {
     return { ok: false, status: 401, message: "No refresh token disponible." };
   }
 
-  const response = await fetch(`${API_BASE}/users/auth/refresh`, {
+  const { ok, status, json } = await apiRequest("/users/auth/refresh", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken: existingRefreshToken }),
-    cache: "no-store",
+    body: { refreshToken: existingRefreshToken },
   });
 
-  const json = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
+  if (!ok) {
     await clearAuthCookies();
-    return { ok: false, status: response.status, message: json?.message || "No se pudo refrescar sesion." };
+    return { ok: false, status, message: json?.message || "No se pudo refrescar sesion." };
   }
 
   const accessToken = firstToken(json);
   const refreshToken = firstRefreshToken(json);
-  const accessMaxAge = accessToken ? tokenMaxAgeSeconds(accessToken, ACCESS_TOKEN_FALLBACK_MAX_AGE) : 0;
-  const refreshMaxAge = refreshToken ? tokenMaxAgeSeconds(refreshToken, REFRESH_TOKEN_FALLBACK_MAX_AGE) : 0;
 
   if (!accessToken || !refreshToken) {
     await clearAuthCookies();
     return { ok: false, status: 502, message: "Respuesta de refresh incompleta." };
   }
+
+  const accessMaxAge = tokenMaxAgeSeconds(accessToken, ACCESS_TOKEN_FALLBACK_MAX_AGE);
+  const refreshMaxAge = tokenMaxAgeSeconds(refreshToken, REFRESH_TOKEN_FALLBACK_MAX_AGE);
 
   if (accessMaxAge <= 0 || refreshMaxAge <= 0) {
     await clearAuthCookies();
@@ -165,40 +124,38 @@ export async function refreshWithCookie() {
   return { ok: true, accessToken, refreshToken };
 }
 
-export async function getServerAccessToken({ allowRefresh = true } = {}) {
+/**
+ * Access token vigente.
+ *
+ * allowRefresh solo puede ser true en route handlers y server actions:
+ * escribir cookies durante el render de un server component lanza error en Next.
+ */
+export async function getServerAccessToken({ allowRefresh = false } = {}) {
   const cookieStore = await cookies();
   const token = cookieStore.get(ACCESS_COOKIE)?.value;
 
-  if (!token) {
-    if (!allowRefresh) {
-      return "";
-    }
-
-    const refreshed = await refreshWithCookie();
-    return refreshed.ok ? refreshed.accessToken : "";
+  if (token && !isTokenExpiredOrNear(token)) {
+    return token;
   }
 
-  if (isTokenExpiredOrNear(token)) {
-    if (!allowRefresh) {
-      return "";
-    }
-
-    const refreshed = await refreshWithCookie();
-    return refreshed.ok ? refreshed.accessToken : "";
+  if (!allowRefresh) {
+    return "";
   }
 
-  return token;
+  const refreshed = await refreshWithCookie();
+  return refreshed.ok ? refreshed.accessToken : "";
 }
 
 export async function parseLoginResponseAndPersist(rawAuthData, safeSessionUser) {
   const accessToken = firstToken(rawAuthData);
   const refreshToken = firstRefreshToken(rawAuthData);
-  const accessMaxAge = accessToken ? tokenMaxAgeSeconds(accessToken, ACCESS_TOKEN_FALLBACK_MAX_AGE) : 0;
-  const refreshMaxAge = refreshToken ? tokenMaxAgeSeconds(refreshToken, REFRESH_TOKEN_FALLBACK_MAX_AGE) : 0;
 
   if (!accessToken || !refreshToken) {
     return { ok: false, message: "El servidor no devolvio access/refresh token." };
   }
+
+  const accessMaxAge = tokenMaxAgeSeconds(accessToken, ACCESS_TOKEN_FALLBACK_MAX_AGE);
+  const refreshMaxAge = tokenMaxAgeSeconds(refreshToken, REFRESH_TOKEN_FALLBACK_MAX_AGE);
 
   if (accessMaxAge <= 0 || refreshMaxAge <= 0) {
     return { ok: false, message: "El servidor devolvio tokens vencidos." };
@@ -216,26 +173,23 @@ export async function callBackendLogoutCurrentSession() {
     return;
   }
 
-  await fetch(`${API_BASE}/users/auth/logout`, {
+  await apiRequest("/users/auth/logout", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
-    cache: "no-store",
+    body: { refreshToken },
   }).catch(() => null);
 }
 
 export async function callBackendLogoutAllSessions() {
-  const token = await getServerAccessToken();
+  const token = await getServerAccessToken({ allowRefresh: true });
 
   if (!token) {
     return { ok: false, status: 401 };
   }
 
-  const response = await fetch(`${API_BASE}/users/auth/logout-all`, {
+  const { ok, status } = await apiRequest("/users/auth/logout-all", {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
+    token,
   });
 
-  return { ok: response.ok, status: response.status };
+  return { ok, status };
 }

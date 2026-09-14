@@ -1,128 +1,85 @@
 import { NextResponse } from "next/server";
-import { getServerAccessToken } from "@/lib/auth-service";
-import { apiUrl } from "@/lib/api-url";
+import { apiRequest, findUserById, PATHS } from "@/lib/backend";
+import { jsonError, parsePositiveInt, readJsonBody, requireViewer } from "@/lib/api-guard";
+import { getUserRoleName, isAdminOrGymRoleName, isAthleteRoleName, isCoachRoleName, sameId } from "@/lib/roles";
+import { canManageUser } from "@/lib/viewer";
 
-const API_BASE = apiUrl("/users");
-const ROLES_URL = apiUrl("/rol");
-
-function normalizeRoleName(value) {
-  return String(value || "").trim().toLowerCase();
+/**
+ * Devuelve el campo solo si vino en el body, distinguiendo "no enviado" de
+ * "enviado vacio". Sin esto no habria forma de borrar un telefono o direccion.
+ */
+function optionalField(body, key, transform = (value) => String(value ?? "").trim()) {
+  return Object.hasOwn(body, key) ? { [key]: transform(body[key]) } : {};
 }
 
-function isAdminRole(roleName) {
-  const name = normalizeRoleName(roleName);
-  return name === "admin" || name === "administrador" || name === "gym" || name === "gimnasio";
-}
+async function loadTarget(viewer, userId) {
+  const targetUser = await findUserById(viewer.token, userId);
 
-function isAthleteRole(roleName) {
-  const name = normalizeRoleName(roleName);
-  return name === "athlete" || name === "atleta";
-}
-
-function isCoachRole(roleName) {
-  return normalizeRoleName(roleName) === "coach";
-}
-
-async function fetchList(url, token) {
-  const response = await fetch(url, {
-    cache: "no-store",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-
-  if (!response.ok) {
-    return [];
+  if (!targetUser) {
+    return { error: jsonError("No se encontro el usuario indicado.", 404) };
   }
 
-  const json = await response.json().catch(() => ({}));
-  return Array.isArray(json?.data) ? json.data : [];
+  return { targetUser };
 }
 
 async function sendUserUpdate(userId, payload, token, method) {
-  return fetch(`${API_BASE}/${userId}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(payload),
-    cache: "no-store",
-  });
+  return apiRequest(`${PATHS.users}/${userId}`, { token, method, body: payload });
 }
 
 async function updateUser(request, { params }, preferredMethod) {
   try {
     const { userId } = await params;
-    const normalizedUserId = Number(userId);
+    const normalizedUserId = parsePositiveInt(userId);
 
-    if (!Number.isFinite(normalizedUserId) || normalizedUserId <= 0) {
-      return NextResponse.json({ message: "El usuario es invalido." }, { status: 400 });
+    if (!normalizedUserId) {
+      return jsonError("El usuario es invalido.", 400);
     }
 
-    const body = await request.json();
-    const token = await getServerAccessToken({ allowRefresh: false });
-
-    if (!token) {
-      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    const { viewer, gymOwnerId, error } = await requireViewer();
+    if (error) {
+      return error;
     }
 
-    const [users, roles] = await Promise.all([fetchList(API_BASE, token), fetchList(ROLES_URL, token)]);
-    const currentUser = users.find((item) => Number(item?.id) === normalizedUserId);
-
-    if (!currentUser) {
-      return NextResponse.json({ message: "No se encontro el usuario a actualizar." }, { status: 404 });
+    const { targetUser, error: targetError } = await loadTarget(viewer, normalizedUserId);
+    if (targetError) {
+      return targetError;
     }
 
-    const currentRoleId = Number(currentUser?.idRole || currentUser?.Rol?.id);
-    const role = roles.find((item) => Number(item?.id) === currentRoleId);
-    const roleName = role?.name || currentUser?.Rol?.name || "";
-    const shouldRequireDni = isAthleteRole(roleName) || isCoachRole(roleName);
-    const shouldRequireBirthAndGender = !isAdminRole(roleName);
-    const shouldRequireAthleteData = isAthleteRole(roleName);
+    if (!canManageUser({ viewer, viewerGymOwnerId: gymOwnerId, targetUser })) {
+      return jsonError("No tenes permisos para editar este usuario.", 403);
+    }
+
+    const body = await readJsonBody(request);
+    const roleName = getUserRoleName(targetUser);
+    const needsDni = isAthleteRoleName(roleName) || isCoachRoleName(roleName);
+    const needsBirthAndGender = !isAdminOrGymRoleName(roleName);
+    const needsAthleteData = isAthleteRoleName(roleName);
 
     const username = String(body?.username || "").trim().toUpperCase();
-    const dni = String(body?.dni || "").trim();
     const email = String(body?.email || "").trim().toLowerCase();
-    const birthDate = body?.birthDate;
-    const gender = body?.gender;
+    const dni = String(body?.dni || "").trim();
     const password = String(body?.password || "").trim();
-    const phone = String(body?.phone || "").trim();
-    const address = String(body?.address || "").trim();
-    const height = body?.height;
-    const weight = body?.weight;
-    const goal = String(body?.goal || "").trim();
-    const weeklyAvailability = String(body?.weeklyAvailability || "").trim();
+    const { birthDate, gender } = body;
 
     if (!username || !email) {
-      return NextResponse.json({ message: "username y email son obligatorios." }, { status: 400 });
+      return jsonError("username y email son obligatorios.", 400);
     }
 
-    if (shouldRequireDni && !dni) {
-      return NextResponse.json({ message: "dni es obligatorio para este rol." }, { status: 400 });
+    if (needsDni && !dni) {
+      return jsonError("dni es obligatorio para este rol.", 400);
     }
 
-    if (shouldRequireBirthAndGender && (!birthDate || !gender)) {
-      return NextResponse.json(
-        { message: "birthDate y gender son obligatorios para este rol." },
-        { status: 400 }
-      );
+    if (needsBirthAndGender && (!birthDate || !gender)) {
+      return jsonError("birthDate y gender son obligatorios para este rol.", 400);
     }
 
-    if (shouldRequireAthleteData) {
-      const parsedHeight = Number(height);
-      const parsedWeight = Number(weight);
-      if (
-        !Number.isFinite(parsedHeight) ||
-        parsedHeight <= 0 ||
-        !Number.isFinite(parsedWeight) ||
-        parsedWeight <= 0 ||
-        !weeklyAvailability
-      ) {
-        return NextResponse.json(
-          { message: "height, weight y weeklyAvailability son obligatorios para atletas." },
-          { status: 400 }
-        );
+    if (needsAthleteData) {
+      const height = Number(body?.height);
+      const weight = Number(body?.weight);
+      const weeklyAvailability = String(body?.weeklyAvailability || "").trim();
+
+      if (!Number.isFinite(height) || height <= 0 || !Number.isFinite(weight) || weight <= 0 || !weeklyAvailability) {
+        return jsonError("height, weight y weeklyAvailability son obligatorios para atletas.", 400);
       }
     }
 
@@ -131,36 +88,36 @@ async function updateUser(request, { params }, preferredMethod) {
       email,
       ...(dni ? { dni } : {}),
       ...(password ? { password } : {}),
-      ...(phone ? { phone } : {}),
-      ...(address ? { address } : {}),
-      ...(shouldRequireBirthAndGender ? { birthDate, gender } : {}),
-      ...(shouldRequireAthleteData
+      ...optionalField(body, "phone"),
+      ...optionalField(body, "address"),
+      ...(needsBirthAndGender ? { birthDate, gender } : {}),
+      ...(needsAthleteData
         ? {
-            height: Number(height),
-            weight: Number(weight),
-            ...(goal ? { goal } : {}),
-            weeklyAvailability,
+            height: Number(body?.height),
+            weight: Number(body?.weight),
+            weeklyAvailability: String(body?.weeklyAvailability || "").trim(),
+            ...optionalField(body, "goal"),
           }
         : {}),
     };
 
     const fallbackMethod = preferredMethod === "PATCH" ? "PUT" : "PATCH";
-    let response = await sendUserUpdate(normalizedUserId, payload, token, preferredMethod);
-    if (response.status === 404 || response.status === 405) {
-      response = await sendUserUpdate(normalizedUserId, payload, token, fallbackMethod);
+    let result = await sendUserUpdate(normalizedUserId, payload, viewer.token, preferredMethod);
+
+    if (result.status === 404 || result.status === 405) {
+      result = await sendUserUpdate(normalizedUserId, payload, viewer.token, fallbackMethod);
     }
 
-    const json = await response.json().catch(() => ({}));
-    if (!response.ok) {
+    if (!result.ok) {
       return NextResponse.json(
-        { message: json?.message || "No se pudo actualizar el usuario." },
-        { status: response.status }
+        { message: result.json?.message || "No se pudo actualizar el usuario." },
+        { status: result.status }
       );
     }
 
-    return NextResponse.json({ ok: true, data: json?.data || null });
+    return NextResponse.json({ ok: true, data: result.json?.data || null });
   } catch {
-    return NextResponse.json({ message: "Error al actualizar usuario." }, { status: 500 });
+    return jsonError("Error al actualizar usuario.", 500);
   }
 }
 
@@ -175,38 +132,46 @@ export async function PUT(request, context) {
 export async function DELETE(request, { params }) {
   try {
     const { userId } = await params;
-    const { searchParams } = new URL(request.url);
-    const permanent = searchParams.get("permanent") === "true";
+    const normalizedUserId = parsePositiveInt(userId);
 
-    const token = await getServerAccessToken({ allowRefresh: false });
-
-    if (!token) {
-      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    if (!normalizedUserId) {
+      return jsonError("El usuario es invalido.", 400);
     }
 
-    const url = permanent 
-      ? `${API_BASE}/eliminar/${userId}` 
-      : `${API_BASE}/${userId}`;
+    const { viewer, gymOwnerId, error } = await requireViewer();
+    if (error) {
+      return error;
+    }
 
-    const response = await fetch(url, {
-      method: "DELETE",
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      cache: "no-store",
-    });
+    if (sameId(viewer.id, normalizedUserId)) {
+      return jsonError("No podes eliminar tu propio usuario.", 400);
+    }
 
-    const json = await response.json().catch(() => ({}));
+    const { targetUser, error: targetError } = await loadTarget(viewer, normalizedUserId);
+    if (targetError) {
+      return targetError;
+    }
 
-    if (!response.ok) {
+    if (!canManageUser({ viewer, viewerGymOwnerId: gymOwnerId, targetUser })) {
+      return jsonError("No tenes permisos para eliminar este usuario.", 403);
+    }
+
+    const permanent = new URL(request.url).searchParams.get("permanent") === "true";
+    const path = permanent
+      ? `${PATHS.users}/eliminar/${normalizedUserId}`
+      : `${PATHS.users}/${normalizedUserId}`;
+
+    const { ok, status, json } = await apiRequest(path, { token: viewer.token, method: "DELETE" });
+
+    if (!ok) {
       return NextResponse.json(
         { message: json?.message || "No se pudo eliminar el usuario." },
-        { status: response.status }
+        { status }
       );
     }
 
     return NextResponse.json({ ok: true, data: json?.data || null });
   } catch {
-    return NextResponse.json({ message: "Error al eliminar usuario." }, { status: 500 });
+    return jsonError("Error al eliminar usuario.", 500);
   }
 }

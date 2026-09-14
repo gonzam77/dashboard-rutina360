@@ -1,159 +1,80 @@
 import { NextResponse } from "next/server";
-import { getServerAccessToken } from "@/lib/auth-service";
-import { apiUrl } from "@/lib/api-url";
+import { apiRequest, getRoles, PATHS } from "@/lib/backend";
+import { jsonError, readJsonBody, requireViewer } from "@/lib/api-guard";
+import { isAdminOrGymRoleName, isAthleteRoleName, isCoachRoleName } from "@/lib/roles";
+import { canCreateUserWithRole, isSuperAdmin, resolveAdminOwnerForNewUser } from "@/lib/viewer";
 
-const USERS_URL = apiUrl("/users");
-const ROLES_URL = apiUrl("/rol");
-
-function parseJwtPayload(token) {
-  try {
-    const parts = String(token || "").split(".");
-    if (parts.length < 2) {
-      return null;
-    }
-
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const normalized = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-    const payloadJson = Buffer.from(normalized, "base64").toString("utf8");
-    return JSON.parse(payloadJson);
-  } catch {
-    return null;
-  }
-}
-
-function getCreatorIdFromJwtPayload(payload) {
-  const candidates = [payload?.idUser, payload?.userId, payload?.id, payload?.sub];
-
-  for (const value of candidates) {
-    const id = Number(value);
-    if (Number.isFinite(id) && id > 0) {
-      return id;
-    }
-  }
-
-  return null;
-}
-
-function normalizeRoleName(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
+/** Coaches y atletas siempre pertenecen a un gimnasio. */
 function requiresAdminOwner(roleName) {
-  const name = normalizeRoleName(roleName);
-  return name === "coach" || name === "atleta" || name === "athlete";
+  return isCoachRoleName(roleName) || isAthleteRoleName(roleName);
 }
 
 function requiresDni(roleName) {
-  const name = normalizeRoleName(roleName);
-  return name === "coach" || name === "atleta" || name === "athlete";
+  return isCoachRoleName(roleName) || isAthleteRoleName(roleName);
 }
 
-function isAdminRole(roleName) {
-  const name = normalizeRoleName(roleName);
-  return name === "admin" || name === "administrador" || name === "gym" || name === "gimnasio";
-}
-
-async function fetchList(url, token) {
-  const response = await fetch(url, {
-    cache: "no-store",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-
-  if (!response.ok) {
-    return [];
-  }
-
-  const json = await response.json().catch(() => ({}));
-  return Array.isArray(json?.data) ? json.data : [];
+function requiresBirthAndGender(roleName) {
+  return !isAdminOrGymRoleName(roleName);
 }
 
 export async function POST(request) {
   try {
-    const token = await getServerAccessToken({ allowRefresh: false });
-    const body = await request.json();
-
-    if (!token) {
-      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    const { viewer, gymOwnerId, error } = await requireViewer();
+    if (error) {
+      return error;
     }
+
+    const body = await readJsonBody(request);
 
     const username = body?.username?.trim().toUpperCase();
     const dni = body?.dni?.trim();
     const email = body?.email?.trim().toLowerCase();
     const password = body?.password;
     const idRole = Number(body?.idRole);
-    const birthDate = body?.birthDate;
-    const gender = body?.gender;
-    const height = body?.height;
-    const weight = body?.weight;
-    const goal = body?.goal;
-    const weeklyAvailability = body?.weeklyAvailability;
-    const explicitAdminOwnerId = Number(body?.idAdminOwner);
+    const { birthDate, gender, height, weight, goal, weeklyAvailability } = body;
 
     if (!username || !email || !password || !idRole) {
-      return NextResponse.json(
-        { message: "username, email, password e idRole son obligatorios." },
-        { status: 400 }
-      );
+      return jsonError("username, email, password e idRole son obligatorios.", 400);
     }
 
-    let idAdminOwner;
-
-    const [roles, users] = await Promise.all([
-      fetchList(ROLES_URL, token),
-      fetchList(USERS_URL, token),
-    ]);
-
+    const roles = await getRoles(viewer.token);
     const targetRole = roles.find((role) => Number(role?.id) === idRole);
-    const targetRoleName = targetRole?.name || "";
-    const shouldRequireDni = requiresDni(targetRoleName);
-    const shouldRequireBirthAndGender = !isAdminRole(targetRoleName);
-    const shouldAssignOwner = requiresAdminOwner(targetRoleName);
 
-    if (shouldRequireDni && !dni) {
-      return NextResponse.json(
-        { message: "dni es obligatorio para este rol." },
-        { status: 400 }
-      );
+    if (!targetRole) {
+      return jsonError("El rol indicado no existe.", 400);
     }
 
-    if (shouldRequireBirthAndGender && (!birthDate || !gender)) {
-      return NextResponse.json(
-        { message: "birthDate y gender son obligatorios para este rol." },
-        { status: 400 }
-      );
+    const targetRoleName = targetRole.name || "";
+
+    if (!canCreateUserWithRole({ viewer, roleName: targetRoleName })) {
+      return jsonError(`Tu rol no puede crear usuarios con el rol ${targetRoleName}.`, 403);
     }
 
-    if (shouldAssignOwner) {
-      if (Number.isFinite(explicitAdminOwnerId) && explicitAdminOwnerId > 0) {
-        idAdminOwner = explicitAdminOwnerId;
-      } else {
-        const creatorPayload = parseJwtPayload(token);
-        const creatorId = getCreatorIdFromJwtPayload(creatorPayload);
-        const creator = users.find((user) => Number(user?.id) === Number(creatorId));
-        const creatorRoleName = normalizeRoleName(creator?.Rol?.name);
+    if (requiresDni(targetRoleName) && !dni) {
+      return jsonError("dni es obligatorio para este rol.", 400);
+    }
 
-        if (
-          creatorRoleName === "administrador" ||
-          creatorRoleName === "admin" ||
-          creatorRoleName === "gym" ||
-          creatorRoleName === "gimnasio"
-        ) {
-          idAdminOwner = creator?.id;
-        } else if (creatorRoleName === "coach") {
-          idAdminOwner = creator?.idAdminOwner;
-        } else if (Number.isFinite(Number(creator?.idAdminOwner)) && Number(creator?.idAdminOwner) > 0) {
-          idAdminOwner = Number(creator.idAdminOwner);
-        } else if (Number.isFinite(Number(creator?.id)) && Number(creator.id) > 0) {
-          idAdminOwner = Number(creator.id);
-        }
-      }
+    const needsBirthAndGender = requiresBirthAndGender(targetRoleName);
+    if (needsBirthAndGender && (!birthDate || !gender)) {
+      return jsonError("birthDate y gender son obligatorios para este rol.", 400);
+    }
 
-      if (!Number.isFinite(Number(idAdminOwner)) || Number(idAdminOwner) <= 0) {
-        return NextResponse.json(
-          { message: "No se pudo determinar el administrador owner para el nuevo usuario." },
-          { status: 400 }
+    const needsAdminOwner = requiresAdminOwner(targetRoleName);
+    let idAdminOwner = null;
+
+    if (needsAdminOwner) {
+      idAdminOwner = resolveAdminOwnerForNewUser({
+        viewer,
+        viewerGymOwnerId: gymOwnerId,
+        requestedAdminOwnerId: body?.idAdminOwner,
+      });
+
+      if (!idAdminOwner) {
+        return jsonError(
+          isSuperAdmin(viewer)
+            ? "Debes indicar el gimnasio (idAdminOwner) al que pertenece el usuario."
+            : "No se pudo determinar tu gimnasio para crear el usuario.",
+          400
         );
       }
     }
@@ -164,37 +85,35 @@ export async function POST(request) {
       password,
       idRole,
       ...(dni ? { dni } : {}),
-      ...(shouldRequireBirthAndGender ? { birthDate, gender } : {}),
-      ...(shouldAssignOwner ? { idAdminOwner: Number(idAdminOwner) } : {}),
+      ...(needsBirthAndGender ? { birthDate, gender } : {}),
+      ...(needsAdminOwner ? { idAdminOwner } : {}),
       ...(height !== undefined && height !== null && height !== "" ? { height: Number(height) } : {}),
       ...(weight !== undefined && weight !== null && weight !== "" ? { weight: Number(weight) } : {}),
-      ...(goal !== undefined && goal !== null && String(goal).trim() !== "" ? { goal: String(goal).trim() } : {}),
-      ...(weeklyAvailability !== undefined && weeklyAvailability !== null && String(weeklyAvailability).trim() !== ""
+      ...(goal !== undefined && goal !== null && String(goal).trim() !== ""
+        ? { goal: String(goal).trim() }
+        : {}),
+      ...(weeklyAvailability !== undefined &&
+      weeklyAvailability !== null &&
+      String(weeklyAvailability).trim() !== ""
         ? { weeklyAvailability: String(weeklyAvailability).trim() }
         : {}),
     };
 
-    const response = await fetch(USERS_URL, {
+    const { ok, status, json } = await apiRequest(PATHS.users, {
+      token: viewer.token,
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(payload),
-      cache: "no-store",
+      body: payload,
     });
 
-    const json = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
+    if (!ok) {
       return NextResponse.json(
         { message: json?.message || "No se pudo crear el usuario." },
-        { status: response.status }
+        { status }
       );
     }
 
     return NextResponse.json({ ok: true, data: json?.data || null });
   } catch {
-    return NextResponse.json({ message: "Error al crear usuario." }, { status: 500 });
+    return jsonError("Error al crear usuario.", 500);
   }
 }

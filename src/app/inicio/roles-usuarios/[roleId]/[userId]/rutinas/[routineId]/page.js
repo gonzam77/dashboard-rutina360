@@ -1,46 +1,12 @@
 import Link from "next/link";
 import RoutineEditButton from "@/components/roles/RoutineEditButton";
-import { getServerAccessToken } from "@/lib/auth-service";
-import { apiUrl } from "@/lib/api-url";
+import { findUserById, getExercisesStrict, getRoutinesStrict } from "@/lib/backend";
+import { getRoutineExerciseId, getRoutineExercises, getRoutineOwnerId } from "@/lib/routines";
+import { canManageRoutine, getViewer } from "@/lib/viewer";
 
-const ROUTINES_URL = apiUrl("/routine");
-const EXERCISES_URL = apiUrl("/ejercice");
-
-async function fetchList(url, fallbackMessage, token) {
-  const response = await fetch(url, {
-    cache: "no-store",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-  const json = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(json?.message || fallbackMessage);
-  }
-
-  return Array.isArray(json?.data) ? json.data : [];
-}
-
-function getRoutineExercises(routine) {
-  if (Array.isArray(routine?.exercises)) {
-    return routine.exercises;
-  }
-
-  if (Array.isArray(routine?.Routine_Ejercices)) {
-    return routine.Routine_Ejercices;
-  }
-
-  if (Array.isArray(routine?.Ejercices)) {
-    return routine.Ejercices;
-  }
-
-  if (Array.isArray(routine?.RoutineEjercices)) {
-    return routine.RoutineEjercices;
-  }
-
-  return [];
-}
+export const metadata = {
+  title: "Detalle de rutina",
+};
 
 export default async function RoutineDetailPage({ params, searchParams }) {
   const { roleId, userId, routineId } = await params;
@@ -56,28 +22,36 @@ export default async function RoutineDetailPage({ params, searchParams }) {
   let routine = null;
   let routineExercises = [];
   let exerciseNameById = new Map();
+  let canEditRoutine = false;
 
   try {
-    const token = await getServerAccessToken();
+    const viewer = await getViewer();
 
-    if (!token) {
+    if (!viewer) {
       throw new Error("No autenticado.");
     }
 
     const [routines, exercises] = await Promise.all([
-      fetchList(ROUTINES_URL, "No se pudieron cargar las rutinas.", token),
-      fetchList(EXERCISES_URL, "No se pudieron cargar los ejercicios.", token),
+      getRoutinesStrict(viewer.token),
+      getExercisesStrict(viewer.token),
     ]);
 
     routine = routines.find((item) => String(item?.id) === String(routineId)) || null;
-    routineExercises = routine ? getRoutineExercises(routine) : [];
-    exerciseNameById = new Map(exercises.map((item) => [String(item.id), item.name]));
-  } catch (error) {
-    errorMessage = error.message;
-  }
 
-  if (!errorMessage && !routine) {
-    errorMessage = `No se encontro la rutina #${routineId}.`;
+    if (!routine) {
+      throw new Error(`No se encontro la rutina #${routineId}.`);
+    }
+
+    routineExercises = getRoutineExercises(routine);
+    exerciseNameById = new Map(exercises.map((item) => [String(item.id), item.name]));
+
+    const ownerId = getRoutineOwnerId(routine);
+    const routineOwner = ownerId ? await findUserById(viewer.token, ownerId) : null;
+
+    // El boton de editar solo aparece si la API tambien va a aceptar el cambio.
+    canEditRoutine = canManageRoutine({ viewer, routine, routineOwner });
+  } catch (error) {
+    errorMessage = error?.message || "No se pudo cargar la rutina.";
   }
 
   return (
@@ -91,7 +65,7 @@ export default async function RoutineDetailPage({ params, searchParams }) {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {routine ? (
+            {routine && canEditRoutine ? (
               <RoutineEditButton
                 routine={routine}
                 className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
@@ -117,10 +91,18 @@ export default async function RoutineDetailPage({ params, searchParams }) {
         <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
           <h2 className="text-lg font-semibold text-white">Cabecera</h2>
           <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-white/85 md:grid-cols-2">
-            <p><span className="font-medium">Nombre:</span> {routine.name || "-"}</p>
-            <p><span className="font-medium">Coach (idUser):</span> {routine.idUser || "-"}</p>
-            <p><span className="font-medium">Orden:</span> {routine.order || "-"}</p>
-            <p><span className="font-medium">Tiempo:</span> {routine.time || "-"} min</p>
+            <p>
+              <span className="font-medium">Nombre:</span> {routine.name || "-"}
+            </p>
+            <p>
+              <span className="font-medium">Coach (idUser):</span> {routine.idUser || "-"}
+            </p>
+            <p>
+              <span className="font-medium">Orden:</span> {routine.order || "-"}
+            </p>
+            <p>
+              <span className="font-medium">Tiempo:</span> {routine.time || "-"} min
+            </p>
           </div>
         </section>
       ) : null}
@@ -133,20 +115,27 @@ export default async function RoutineDetailPage({ params, searchParams }) {
           ) : (
             <div className="mt-4 space-y-3">
               {routineExercises.map((item, index) => {
-                const idEjercice = item?.idEjercice || item?.id || item?.Ejercice?.id;
+                const idEjercice = getRoutineExerciseId(item);
                 const exerciseName =
                   item?.Ejercice?.name ||
                   item?.name ||
                   exerciseNameById.get(String(idEjercice)) ||
-                  `Ejercicio #${idEjercice}`;
+                  `Ejercicio #${idEjercice ?? "-"}`;
 
                 return (
-                  <article key={`${idEjercice}-${index}`} className="rounded-2xl border border-white/15 bg-[#0f2a46] p-4">
-                    <p className="text-xs uppercase tracking-wide text-white/60">Ejercicio #{index + 1}</p>
+                  <article
+                    key={`${idEjercice}-${index}`}
+                    className="rounded-2xl border border-white/15 bg-[#0f2a46] p-4"
+                  >
+                    <p className="text-xs uppercase tracking-wide text-white/60">
+                      Ejercicio #{index + 1}
+                    </p>
                     <p className="mt-1 font-semibold text-white">{exerciseName}</p>
                     <p className="mt-2 text-sm text-white/80">Series: {item?.series ?? "-"}</p>
                     <p className="text-sm text-white/80">Descanso: {item?.rest ?? "-"} min</p>
-                    <p className="text-sm text-white/80">Comentario: {item?.comments || "Sin comentario"}</p>
+                    <p className="text-sm text-white/80">
+                      Comentario: {item?.comments || "Sin comentario"}
+                    </p>
                   </article>
                 );
               })}

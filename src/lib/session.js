@@ -8,6 +8,11 @@ export function firstNonEmptyString(values) {
   return "";
 }
 
+/**
+ * Datos de presentacion de la sesion (nombre, rol para el menu).
+ * NO usar para decidir permisos: el navegador puede alterar esta cookie.
+ * Para eso esta getViewer() en @/lib/viewer.
+ */
 export function parseSessionUserCookie(rawValue) {
   if (!rawValue) {
     return null;
@@ -27,31 +32,4 @@ export function parseSessionUserCookie(rawValue) {
   } catch {
     return null;
   }
-}
-
-export function normalizeRoleKey(roleName) {
-  const normalized = String(roleName || "").trim().toLowerCase();
-
-  if (normalized.includes("super") && normalized.includes("admin")) {
-    return "super_admin";
-  }
-
-  if (
-    normalized === "admin" ||
-    normalized === "administrador" ||
-    normalized === "gym" ||
-    normalized === "gimnasio"
-  ) {
-    return "admin";
-  }
-
-  if (normalized === "coach") {
-    return "coach";
-  }
-
-  if (normalized === "athlete" || normalized === "atleta") {
-    return "athlete";
-  }
-
-  return "unknown";
 }

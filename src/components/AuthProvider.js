@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 const AuthContext = createContext(null);
@@ -10,136 +10,169 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
+function isSameOriginApiUrl(url) {
+  if (!url) {
+    return false;
+  }
+
+  if (url.startsWith("/api/")) {
+    return true;
+  }
+
+  return typeof window !== "undefined" && url.startsWith(`${window.location.origin}/api/`);
+}
+
+function isAuthApiUrl(url) {
+  return url.includes("/api/auth/");
+}
+
+function resolveRequestUrl(input) {
+  if (typeof input === "string") {
+    return input;
+  }
+
+  if (input instanceof URL) {
+    return input.toString();
+  }
+
+  return input?.url || "";
+}
+
 export default function AuthProvider({ children }) {
   const router = useRouter();
   const pathname = usePathname();
-  const isRefreshingRef = useRef(false);
-  const waitersRef = useRef([]);
-  const originalFetchRef = useRef(null);
-  const [authInitializing, setAuthInitializing] = useState(true);
-  const [accessToken, setAccessToken] = useState("");
+  const refreshPromiseRef = useRef(null);
   const [user, setUser] = useState(null);
+  const [status, setStatus] = useState("checking");
 
-  const flushWaiters = (ok) => {
-    const queue = waitersRef.current;
-    waitersRef.current = [];
-    queue.forEach((resolve) => resolve(ok));
-  };
+  /** Un solo refresh en vuelo: las llamadas concurrentes esperan el mismo resultado. */
+  const refreshSession = useCallback(async () => {
+    if (!refreshPromiseRef.current) {
+      refreshPromiseRef.current = fetch("/api/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+      })
+        .then((response) => response.ok)
+        .catch(() => false)
+        .finally(() => {
+          refreshPromiseRef.current = null;
+        });
+    }
 
-  const logoutClient = async () => {
-    setAccessToken("");
+    return refreshPromiseRef.current;
+  }, []);
+
+  const handleUnauthenticated = useCallback(() => {
     setUser(null);
-    router.push("/login");
-    router.refresh();
-  };
-
-  const refreshAccessToken = async () => {
-    if (isRefreshingRef.current) {
-      return new Promise((resolve) => {
-        waitersRef.current.push(resolve);
-      });
-    }
-
-    isRefreshingRef.current = true;
-    try {
-      const response = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" });
-      const json = await response.json().catch(() => ({}));
-
-      if (!response.ok || !json?.accessToken) {
-        flushWaiters(false);
-        await logoutClient();
-        return false;
-      }
-
-      setAccessToken(json.accessToken);
-      flushWaiters(true);
-      return true;
-    } catch {
-      flushWaiters(false);
-      await logoutClient();
-      return false;
-    } finally {
-      isRefreshingRef.current = false;
-    }
-  };
-
-  useEffect(() => {
-    let mounted = true;
-    const boot = async () => {
-      try {
-        const response = await fetch("/api/auth/session", { cache: "no-store", credentials: "include" });
-        const json = await response.json().catch(() => ({}));
-        if (mounted && response.ok && json?.authenticated) {
-          setAccessToken(json.accessToken || "");
-          setUser(json.user || null);
-        }
-      } finally {
-        if (mounted) {
-          setAuthInitializing(false);
-        }
-      }
-    };
-    boot();
-    return () => {
-      mounted = false;
-    };
+    setStatus("anonymous");
   }, []);
 
   useEffect(() => {
-    if (originalFetchRef.current || typeof window === "undefined") {
-      return;
+    const controller = new AbortController();
+
+    async function boot() {
+      try {
+        const response = await fetch("/api/auth/session", {
+          cache: "no-store",
+          credentials: "include",
+          signal: controller.signal,
+        });
+        const json = await response.json().catch(() => ({}));
+
+        if (response.ok && json?.authenticated) {
+          setUser(json.user || null);
+          setStatus("authenticated");
+          return;
+        }
+
+        setUser(null);
+        setStatus("anonymous");
+      } catch {
+        if (!controller.signal.aborted) {
+          setStatus("anonymous");
+        }
+      }
+    }
+
+    boot();
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  /**
+   * Reintenta una vez las llamadas a /api que responden 401, refrescando la sesion.
+   * Solo intercepta la API propia: el resto del trafico pasa sin tocar.
+   */
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
     }
 
     const nativeFetch = window.fetch.bind(window);
-    originalFetchRef.current = nativeFetch;
 
-    window.fetch = async (input, init = {}) => {
-      const url = typeof input === "string" ? input : input?.url || "";
-      const isApiRequest = url.startsWith("/api/");
-      const isAuthRoute = url.startsWith("/api/auth/");
+    const patchedFetch = async (input, init) => {
+      const options = init || {};
+      const url = resolveRequestUrl(input);
+      const shouldIntercept =
+        isSameOriginApiUrl(url) && !isAuthApiUrl(url) && !options.__authRetry;
+
+      if (!shouldIntercept) {
+        return nativeFetch(input, init);
+      }
+
+      // El body de un Request se consume al enviarlo: hay que clonarlo antes.
+      const retryInput =
+        typeof input === "string" || input instanceof URL ? input : input.clone();
+
       const response = await nativeFetch(input, init);
 
-      if (!isApiRequest || isAuthRoute || response.status !== 401 || init?._retryAuth) {
+      if (response.status !== 401) {
         return response;
       }
 
-      const refreshed = await refreshAccessToken();
+      const refreshed = await refreshSession();
+
       if (!refreshed) {
+        handleUnauthenticated();
         return response;
       }
 
-      const retryInit = { ...init, _retryAuth: true, credentials: init?.credentials || "include" };
-      return nativeFetch(input, retryInit);
+      return nativeFetch(retryInput, {
+        ...options,
+        __authRetry: true,
+        credentials: options.credentials || "include",
+      });
     };
+
+    window.fetch = patchedFetch;
 
     return () => {
-      if (originalFetchRef.current) {
-        window.fetch = originalFetchRef.current;
-        originalFetchRef.current = null;
+      if (window.fetch === patchedFetch) {
+        window.fetch = nativeFetch;
       }
     };
-  }, []);
+  }, [handleUnauthenticated, refreshSession]);
 
   useEffect(() => {
-    if (!authInitializing && !accessToken && !PUBLIC_PATHS.has(pathname || "")) {
-      router.push("/login");
+    if (status === "anonymous" && !PUBLIC_PATHS.has(pathname || "")) {
+      router.replace("/login");
     }
-  }, [accessToken, authInitializing, pathname, router]);
+  }, [pathname, router, status]);
 
   const value = useMemo(
     () => ({
-      authInitializing,
-      accessToken,
       user,
-      refreshAccessToken,
+      status,
+      isAuthenticated: status === "authenticated",
+      authInitializing: status === "checking",
+      refreshSession,
     }),
-    [authInitializing, accessToken, user]
+    [refreshSession, status, user]
   );
 
-  if (authInitializing && !PUBLIC_PATHS.has(pathname || "")) {
-    return null;
-  }
-
+  // El contenido lo renderiza el servidor: no se bloquea el arbol esperando
+  // la verificacion del cliente, que solo sirve para reaccionar a un 401.
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-

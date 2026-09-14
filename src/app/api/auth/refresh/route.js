@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { clearAuthCookies, refreshWithCookie } from "@/lib/auth-service";
 
+const RETRY_PARAM = "_authRetry";
+
 function safeNextPath(request) {
   const url = new URL(request.url);
   const nextPath = url.searchParams.get("next");
@@ -11,7 +13,14 @@ function safeNextPath(request) {
 
   try {
     const parsed = new URL(nextPath, url.origin);
-    return parsed.origin === url.origin ? `${parsed.pathname}${parsed.search}${parsed.hash}` : "/inicio";
+
+    if (parsed.origin !== url.origin) {
+      return "/inicio";
+    }
+
+    // El marcador le dice al proxy que este destino ya viene de un refresh.
+    parsed.searchParams.set(RETRY_PARAM, "1");
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
     return "/inicio";
   }
@@ -45,13 +54,16 @@ export async function POST() {
 
     if (!result.ok) {
       await clearAuthCookies();
-      return NextResponse.json({ message: result.message || "No autorizado." }, { status: result.status || 401 });
+      return NextResponse.json(
+        { message: result.message || "No autorizado." },
+        { status: result.status || 401 }
+      );
     }
 
-    return NextResponse.json({ ok: true, accessToken: result.accessToken });
+    // El token vive solo en la cookie httpOnly: no se expone al cliente.
+    return NextResponse.json({ ok: true });
   } catch {
     await clearAuthCookies();
     return NextResponse.json({ message: "No se pudo refrescar la sesion." }, { status: 401 });
   }
 }
-

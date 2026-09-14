@@ -1,21 +1,19 @@
-const BLOCKED_API_HOSTS = new Set(["rutina360-server.onrender.com"]);
-
 export function getApiBaseUrl() {
   const configuredUrl = process.env.API_BASE_URL;
-  
-  console.log('API_BASE_URL: ', configuredUrl);
 
   if (!configuredUrl) {
-    throw new Error("API_BASE_URL no esta configurada.");
+    throw new Error(
+      "API_BASE_URL no esta configurada. Defini la URL del backend en .env (desarrollo) o en ecosystem.config.js (produccion)."
+    );
   }
 
-  const normalizedUrl = configuredUrl.replace(/\/+$/, "");
-  const { hostname } = new URL(normalizedUrl);
+  const normalizedUrl = String(configuredUrl).trim().replace(/\/+$/, "");
 
-  if (BLOCKED_API_HOSTS.has(hostname)) {
-    throw new Error(
-      `API_BASE_URL apunta a ${hostname}. Configurala con http://2.25.189.180:5000 y reinicia la app.`
-    );
+  try {
+    // Valida la forma de la URL lo antes posible para fallar con un mensaje claro.
+    new URL(normalizedUrl);
+  } catch {
+    throw new Error(`API_BASE_URL no es una URL valida: ${configuredUrl}`);
   }
 
   return normalizedUrl;

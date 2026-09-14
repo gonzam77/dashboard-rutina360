@@ -1,57 +1,20 @@
 import { NextResponse } from "next/server";
-import { getServerAccessToken } from "@/lib/auth-service";
-import { apiUrl } from "@/lib/api-url";
-
-const ROLES_URL = apiUrl("/rol");
-
-function parseJwtPayload(token) {
-  try {
-    const parts = String(token || "").split(".");
-    if (parts.length < 2) {
-      return null;
-    }
-
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const normalized = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-    const payloadJson = Buffer.from(normalized, "base64").toString("utf8");
-    return JSON.parse(payloadJson);
-  } catch {
-    return null;
-  }
-}
-
-function getUserIdFromPayload(payload) {
-  const candidates = [payload?.idUser, payload?.userId, payload?.id, payload?.sub];
-
-  for (const value of candidates) {
-    const id = Number(value);
-    if (Number.isFinite(id) && id > 0) {
-      return id;
-    }
-  }
-
-  return null;
-}
+import { apiRequest, getRoles, PATHS } from "@/lib/backend";
+import { jsonError, readJsonBody, requireViewer } from "@/lib/api-guard";
+import { isSuperAdmin } from "@/lib/viewer";
 
 export async function POST(request) {
   try {
-    const token = await getServerAccessToken({ allowRefresh: false });
-
-    if (!token) {
-      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    const { viewer, error } = await requireViewer();
+    if (error) {
+      return error;
     }
 
-    const payload = parseJwtPayload(token);
-    const requesterId = getUserIdFromPayload(payload);
-
-    if (requesterId !== 1) {
-      return NextResponse.json(
-        { message: "Solo el Super Administrador puede crear roles." },
-        { status: 403 }
-      );
+    if (!isSuperAdmin(viewer)) {
+      return jsonError("Solo el Super Administrador puede crear roles.", 403);
     }
 
-    const body = await request.json();
+    const body = await readJsonBody(request);
     const name = String(body?.name || "").trim();
     const parentIdRaw = body?.parentId;
     const parentId =
@@ -60,34 +23,32 @@ export async function POST(request) {
         : Number(parentIdRaw);
 
     if (!name) {
-      return NextResponse.json({ message: "El nombre del rol es obligatorio." }, { status: 400 });
+      return jsonError("El nombre del rol es obligatorio.", 400);
     }
 
-    if (parentId !== null && (!Number.isFinite(parentId) || parentId <= 0)) {
-      return NextResponse.json({ message: "parentId invalido." }, { status: 400 });
+    if (parentId !== null) {
+      if (!Number.isFinite(parentId) || parentId <= 0) {
+        return jsonError("parentId invalido.", 400);
+      }
+
+      const roles = await getRoles(viewer.token);
+      if (!roles.some((role) => Number(role?.id) === parentId)) {
+        return jsonError("El rol padre indicado no existe.", 400);
+      }
     }
 
-    const response = await fetch(ROLES_URL, {
+    const { ok, status, json } = await apiRequest(PATHS.roles, {
+      token: viewer.token,
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ name, ...(parentId !== null ? { parentId } : {}) }),
-      cache: "no-store",
+      body: { name, ...(parentId !== null ? { parentId } : {}) },
     });
 
-    const json = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { message: json?.message || "No se pudo crear el rol." },
-        { status: response.status }
-      );
+    if (!ok) {
+      return NextResponse.json({ message: json?.message || "No se pudo crear el rol." }, { status });
     }
 
     return NextResponse.json({ ok: true, data: json?.data || null });
   } catch {
-    return NextResponse.json({ message: "Error al crear rol." }, { status: 500 });
+    return jsonError("Error al crear rol.", 500);
   }
 }

@@ -1,209 +1,104 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { getServerAccessToken } from "@/lib/auth-service";
-import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
-import { apiUrl } from "@/lib/api-url";
+import { apiRequest, getAssignments, getExercises, getRoutines, PATHS } from "@/lib/backend";
+import { jsonError, parsePositiveInt, requireViewer } from "@/lib/api-guard";
+import {
+  getAssignmentRoutineId,
+  getExerciseOwnerId,
+  getRoutineExerciseIds,
+  isActiveRecord,
+} from "@/lib/routines";
+import { sameId } from "@/lib/roles";
+import { canManageExerciseCatalog, isGymAdmin } from "@/lib/viewer";
 
-const EXERCISES_URL = apiUrl("/ejercice");
-const ROUTINES_URL = apiUrl("/routine");
-const ASSIGNMENTS_URL = apiUrl("/routine/assign");
-
-function normalizeRoleName(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function isGymRoleName(value) {
-  const normalized = normalizeRoleName(value);
-  return normalized === "gym" || normalized === "gimnasio";
-}
-
-function isActiveAssignment(assignment) {
-  return assignment?.isDeleted !== true && assignment?.isActive !== false;
-}
-
-function getRoutineExercises(routine) {
-  if (Array.isArray(routine?.exercises)) {
-    return routine.exercises;
-  }
-
-  if (Array.isArray(routine?.Routine_Ejercices)) {
-    return routine.Routine_Ejercices;
-  }
-
-  if (Array.isArray(routine?.Ejercices)) {
-    return routine.Ejercices;
-  }
-
-  if (Array.isArray(routine?.RoutineEjercices)) {
-    return routine.RoutineEjercices;
-  }
-
-  return [];
-}
-
-function getRoutineExerciseId(item) {
-  return (
-    item?.idEjercice ||
-    item?.Ejercice?.id ||
-    item?.exercise?.id ||
-    item?.Exercise?.id ||
-    item?.idExercise ||
-    item?.idEjercicio ||
-    item?.id
-  );
-}
-
-function getExerciseOwnerId(exercise) {
-  const candidates = [
-    exercise?.idOwner,
-    exercise?.idUser,
-    exercise?.idAdminOwner,
-    exercise?.createdBy,
-    exercise?.userId,
-    exercise?.creator?.id,
-    exercise?.User?.id,
-    exercise?.user?.id,
-    exercise?.adminOwner?.id,
-  ];
-
-  for (const candidate of candidates) {
-    const id = Number(candidate);
-    if (Number.isFinite(id) && id > 0) {
-      return id;
-    }
-  }
-
-  return null;
-}
-
-function isExerciseAssignedToAnyAthlete(exerciseId, routines, assignments) {
+/** True si el ejercicio forma parte de alguna rutina asignada a un atleta. */
+function isExerciseInAssignedRoutine(exerciseId, routines, assignments) {
   const routinesById = new Map(
-    (Array.isArray(routines) ? routines : [])
+    routines
       .filter((routine) => Number.isFinite(Number(routine?.id)))
       .map((routine) => [String(routine.id), routine])
   );
 
-  for (const assignment of Array.isArray(assignments) ? assignments : []) {
-    if (!isActiveAssignment(assignment)) {
+  for (const assignment of assignments) {
+    if (!isActiveRecord(assignment)) {
       continue;
     }
 
-    const idRoutine = assignment?.idRoutine || assignment?.Routine?.id;
-    if (!idRoutine) {
+    const routineId = getAssignmentRoutineId(assignment);
+    if (!routineId) {
       continue;
     }
 
-    const routine =
-      assignment?.Routine ||
-      routinesById.get(String(idRoutine)) ||
-      null;
-
+    const routine = assignment?.Routine || routinesById.get(String(routineId));
     if (!routine) {
       continue;
     }
 
-    for (const item of getRoutineExercises(routine)) {
-      const candidateExerciseId = Number(getRoutineExerciseId(item));
-      if (Number.isFinite(candidateExerciseId) && candidateExerciseId === Number(exerciseId)) {
-        return true;
-      }
+    if (getRoutineExerciseIds(routine).has(String(exerciseId))) {
+      return true;
     }
   }
 
   return false;
 }
 
-async function fetchList(url, token) {
-  const response = await fetch(url, {
-    cache: "no-store",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-
-  if (!response.ok) {
-    return [];
-  }
-
-  const json = await response.json().catch(() => ({}));
-  return Array.isArray(json?.data) ? json.data : [];
-}
-
 export async function DELETE(_request, { params }) {
   try {
     const { exerciseId } = await params;
-    const normalizedExerciseId = Number(exerciseId);
+    const normalizedExerciseId = parsePositiveInt(exerciseId);
 
-    if (!Number.isFinite(normalizedExerciseId) || normalizedExerciseId <= 0) {
-      return NextResponse.json(
-        { message: "El ejercicio es invalido." },
-        { status: 400 }
-      );
+    if (!normalizedExerciseId) {
+      return jsonError("El ejercicio es invalido.", 400);
     }
 
-    const cookieStore = await cookies();
-    const token = await getServerAccessToken({ allowRefresh: false });
-
-    if (!token) {
-      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    const { viewer, error } = await requireViewer();
+    if (error) {
+      return error;
     }
 
-    const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
-    const viewerId = Number(sessionUser?.id) || null;
-    const viewerRoleName = sessionUser?.roleName || "";
-    const viewerRoleKey = normalizeRoleKey(viewerRoleName);
-    const viewerIsGym = viewerRoleKey === "admin" && isGymRoleName(viewerRoleName);
+    if (!canManageExerciseCatalog(viewer)) {
+      return jsonError("Tu rol no puede eliminar ejercicios del catalogo.", 403);
+    }
 
-    if (viewerIsGym) {
+    // El gimnasio solo borra lo suyo y nunca si ya esta en uso por un atleta.
+    if (isGymAdmin(viewer) && viewer.isGym) {
       const [exercises, routines, assignments] = await Promise.all([
-        fetchList(EXERCISES_URL, token),
-        fetchList(ROUTINES_URL, token),
-        fetchList(ASSIGNMENTS_URL, token),
+        getExercises(viewer.token),
+        getRoutines(viewer.token),
+        getAssignments(viewer.token),
       ]);
 
-      const exercise = exercises.find((item) => Number(item?.id) === normalizedExerciseId) || null;
+      const exercise = exercises.find((item) => Number(item?.id) === normalizedExerciseId);
+
       if (!exercise) {
-        return NextResponse.json(
-          { message: "No se encontro el ejercicio." },
-          { status: 404 }
-        );
+        return jsonError("No se encontro el ejercicio.", 404);
       }
 
-      const exerciseOwnerId = getExerciseOwnerId(exercise);
-      if (!exerciseOwnerId || Number(exerciseOwnerId) !== Number(viewerId)) {
-        return NextResponse.json(
-          { message: "Solo puedes eliminar ejercicios creados por tu gimnasio." },
-          { status: 403 }
-        );
+      if (!sameId(getExerciseOwnerId(exercise), viewer.id)) {
+        return jsonError("Solo puedes eliminar ejercicios creados por tu gimnasio.", 403);
       }
 
-      if (isExerciseAssignedToAnyAthlete(normalizedExerciseId, routines, assignments)) {
-        return NextResponse.json(
-          { message: "No se puede eliminar un ejercicio que pertenece a una rutina asignada a un atleta." },
-          { status: 409 }
+      if (isExerciseInAssignedRoutine(normalizedExerciseId, routines, assignments)) {
+        return jsonError(
+          "No se puede eliminar un ejercicio que pertenece a una rutina asignada a un atleta.",
+          409
         );
       }
     }
 
-    const response = await fetch(`${EXERCISES_URL}/${normalizedExerciseId}`, {
+    const { ok, status, json } = await apiRequest(`${PATHS.exercises}/${normalizedExerciseId}`, {
+      token: viewer.token,
       method: "DELETE",
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      cache: "no-store",
     });
 
-    const json = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
+    if (!ok) {
       return NextResponse.json(
         { message: json?.message || "No se pudo eliminar el ejercicio." },
-        { status: response.status }
+        { status }
       );
     }
 
     return NextResponse.json({ ok: true, data: json?.data || null });
   } catch {
-    return NextResponse.json({ message: "Error al eliminar el ejercicio." }, { status: 500 });
+    return jsonError("Error al eliminar el ejercicio.", 500);
   }
 }

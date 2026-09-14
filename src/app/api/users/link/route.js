@@ -1,93 +1,65 @@
 import { NextResponse } from "next/server";
-import { getServerAccessToken } from "@/lib/auth-service";
-import { apiUrl } from "@/lib/api-url";
+import { apiRequest, findUserById, PATHS } from "@/lib/backend";
+import { jsonError, parsePositiveInt, readJsonBody, requireViewer } from "@/lib/api-guard";
+import { canLinkAthleteToCoach } from "@/lib/viewer";
 
-const USER_LINKS_URL = apiUrl("/users/link");
+async function resolveLink(request) {
+  const { viewer, gymOwnerId, error } = await requireViewer();
+  if (error) {
+    return { error };
+  }
 
-export async function POST(request) {
+  const body = await readJsonBody(request);
+  const idAthlete = parsePositiveInt(body?.idAthlete);
+  const idCoach = parsePositiveInt(body?.idCoach);
+
+  if (!idAthlete || !idCoach) {
+    return { error: jsonError("idAthlete e idCoach son obligatorios.", 400) };
+  }
+
+  const [athlete, coach] = await Promise.all([
+    findUserById(viewer.token, idAthlete),
+    findUserById(viewer.token, idCoach),
+  ]);
+
+  if (!athlete || !coach) {
+    return { error: jsonError("No se encontro el atleta o el coach indicado.", 404) };
+  }
+
+  if (!canLinkAthleteToCoach({ viewer, viewerGymOwnerId: gymOwnerId, athlete, coach })) {
+    return { error: jsonError("No tenes permisos para modificar este vinculo.", 403) };
+  }
+
+  return { viewer, idAthlete, idCoach };
+}
+
+async function sendLink(method, request, fallbackMessage) {
   try {
-    const token = await getServerAccessToken({ allowRefresh: false });
-    const body = await request.json();
-
-    if (!token) {
-      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+    const { viewer, idAthlete, idCoach, error } = await resolveLink(request);
+    if (error) {
+      return error;
     }
 
-    const idAthlete = Number(body?.idAthlete);
-    const idCoach = Number(body?.idCoach);
-
-    if (!idAthlete || !idCoach) {
-      return NextResponse.json(
-        { message: "idAthlete e idCoach son obligatorios." },
-        { status: 400 }
-      );
-    }
-
-    const response = await fetch(USER_LINKS_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ idAthlete, idCoach }),
-      cache: "no-store",
+    const { ok, status, json } = await apiRequest(PATHS.userLinks, {
+      token: viewer.token,
+      method,
+      body: { idAthlete, idCoach },
     });
 
-    const json = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { message: json?.message || "No se pudo crear el vinculo del atleta." },
-        { status: response.status }
-      );
+    if (!ok) {
+      return NextResponse.json({ message: json?.message || fallbackMessage }, { status });
     }
 
     return NextResponse.json({ ok: true, data: json?.data || null });
   } catch {
-    return NextResponse.json({ message: "Error al crear vinculo del atleta." }, { status: 500 });
+    return jsonError(fallbackMessage, 500);
   }
 }
 
+export async function POST(request) {
+  return sendLink("POST", request, "No se pudo crear el vinculo del atleta.");
+}
+
 export async function DELETE(request) {
-  try {
-    const token = await getServerAccessToken({ allowRefresh: false });
-    const body = await request.json();
-
-    if (!token) {
-      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
-    }
-
-    const idAthlete = Number(body?.idAthlete);
-    const idCoach = Number(body?.idCoach);
-
-    if (!idAthlete || !idCoach) {
-      return NextResponse.json(
-        { message: "idAthlete e idCoach son obligatorios." },
-        { status: 400 }
-      );
-    }
-
-    const response = await fetch(USER_LINKS_URL, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ idAthlete, idCoach }),
-      cache: "no-store",
-    });
-
-    const json = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { message: json?.message || "No se pudo eliminar el vinculo del atleta." },
-        { status: response.status }
-      );
-    }
-
-    return NextResponse.json({ ok: true, data: json?.data || null });
-  } catch {
-    return NextResponse.json({ message: "Error al eliminar vinculo del atleta." }, { status: 500 });
-  }
+  return sendLink("DELETE", request, "No se pudo eliminar el vinculo del atleta.");
 }

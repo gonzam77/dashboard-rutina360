@@ -1,36 +1,28 @@
 import { NextResponse } from "next/server";
+import { apiRequest, PATHS } from "@/lib/backend";
 import { getServerAccessToken } from "@/lib/auth-service";
-import { apiUrl } from "@/lib/api-url";
 import { extractArrayPayload } from "@/lib/api-response";
-
-const MUSCLE_GROUPS_URL = apiUrl("/muscleGroup");
+import { jsonError } from "@/lib/api-guard";
 
 export async function GET() {
   try {
-    const token = await getServerAccessToken({ allowRefresh: false });
+    const token = await getServerAccessToken();
 
     if (!token) {
-      return NextResponse.json({ message: "No autenticado." }, { status: 401 });
+      return jsonError("No autenticado.", 401);
     }
 
-    const response = await fetch(MUSCLE_GROUPS_URL, {
-      cache: "no-store",
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
+    const { ok, status, json } = await apiRequest(PATHS.muscleGroups, { token });
 
-    const json = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
+    if (!ok) {
       return NextResponse.json(
         { message: json?.message || "No se pudieron cargar los grupos musculares." },
-        { status: response.status }
+        { status }
       );
     }
 
     return NextResponse.json({ data: extractArrayPayload(json) });
   } catch {
-    return NextResponse.json({ message: "Error al cargar grupos musculares." }, { status: 500 });
+    return jsonError("Error al cargar grupos musculares.", 500);
   }
 }

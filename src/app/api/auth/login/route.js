@@ -1,22 +1,70 @@
 import { NextResponse } from "next/server";
-import { firstNonEmptyString } from "@/lib/session";
+import { apiRequest, PATHS } from "@/lib/backend";
 import { parseLoginResponseAndPersist } from "@/lib/auth-service";
-import { apiUrl } from "@/lib/api-url";
+import { getRoleNameFromPayload, getUserIdFromPayload, parseJwtPayload } from "@/lib/jwt";
+import { getUserRoleName, normalizeRoleKey } from "@/lib/roles";
+import { firstNonEmptyString } from "@/lib/session";
 
-const AUTH_URL = apiUrl("/users/auth");
-
-function normalizeRoleName(value) {
-  return String(value || "").trim().toLowerCase();
+function extractLoggedUser(authData) {
+  return (
+    authData?.data?.data?.user ||
+    authData?.data?.user ||
+    authData?.user ||
+    null
+  );
 }
 
-function isAthleteRole(value) {
-  const roleName = normalizeRoleName(value);
-  return roleName === "athlete" || roleName === "atleta";
+function extractAccessToken(authData) {
+  const candidates = [
+    authData?.accessToken,
+    authData?.token,
+    authData?.data?.accessToken,
+    authData?.data?.token,
+    authData?.data?.data?.accessToken,
+    authData?.data?.data?.token,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) {
+      return value.replace(/^Bearer\s+/i, "").trim();
+    }
+  }
+
+  return "";
+}
+
+/**
+ * Resuelve el rol real del usuario que inicia sesion.
+ * Se consulta al backend si ni la respuesta ni el token lo traen, para que un
+ * cambio en la forma de la respuesta no deje entrar a un atleta por omision.
+ */
+async function resolveRole({ loggedUser, payload, accessToken, userId }) {
+  const fromResponse = getUserRoleName(loggedUser);
+  if (fromResponse) {
+    return fromResponse;
+  }
+
+  const fromToken = getRoleNameFromPayload(payload);
+  if (fromToken) {
+    return fromToken;
+  }
+
+  if (!accessToken || !userId) {
+    return "";
+  }
+
+  const { ok, json } = await apiRequest(PATHS.users, { token: accessToken });
+  if (!ok) {
+    return "";
+  }
+
+  const users = Array.isArray(json?.data) ? json.data : [];
+  return getUserRoleName(users.find((user) => Number(user?.id) === Number(userId)));
 }
 
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const email = body?.email?.trim().toLowerCase();
     const password = body?.password;
 
@@ -27,47 +75,47 @@ export async function POST(request) {
       );
     }
 
-    const authResponse = await fetch(AUTH_URL, {
+    const { ok, status, json: authData } = await apiRequest("/users/auth", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-      cache: "no-store",
+      body: { email, password },
     });
 
-    const authData = await authResponse.json().catch(() => ({}));
-
-    if (!authResponse.ok) {
+    if (!ok) {
       return NextResponse.json(
         { message: authData?.message || "Credenciales invalidas." },
-        { status: authResponse.status }
+        { status }
       );
     }
 
-    const loggedUser = authData?.data?.data?.user || authData?.data?.user || authData?.user || null;
-    const safeSessionUser = loggedUser
-      ? {
-          id: Number(loggedUser?.id) || null,
-          username: firstNonEmptyString([loggedUser?.username]),
-          roleName: firstNonEmptyString([loggedUser?.Rol?.name]),
-          idRole: Number(loggedUser?.idRole) || null,
-        }
-      : null;
+    const loggedUser = extractLoggedUser(authData);
+    const accessToken = extractAccessToken(authData);
+    const payload = parseJwtPayload(accessToken);
+    const userId = Number(loggedUser?.id) || getUserIdFromPayload(payload);
+    const roleName = await resolveRole({ loggedUser, payload, accessToken, userId });
 
-    if (isAthleteRole(safeSessionUser?.roleName)) {
+    if (normalizeRoleKey(roleName) === "athlete") {
       return NextResponse.json(
         { message: "Acceso denegado: los atletas no pueden iniciar sesion en este panel." },
         { status: 403 }
       );
     }
 
+    const safeSessionUser = userId
+      ? {
+          id: userId,
+          username: firstNonEmptyString([loggedUser?.username]),
+          roleName,
+          idRole: Number(loggedUser?.idRole) || null,
+        }
+      : null;
+
     const persisted = await parseLoginResponseAndPersist(authData, safeSessionUser);
     if (!persisted.ok) {
       return NextResponse.json({ message: persisted.message }, { status: 502 });
     }
 
-    return NextResponse.json({ ok: true, accessToken: persisted.accessToken, user: safeSessionUser });
+    // El token queda solo en la cookie httpOnly.
+    return NextResponse.json({ ok: true, user: safeSessionUser });
   } catch {
     return NextResponse.json(
       { message: "Error al iniciar sesion. Intenta nuevamente." },

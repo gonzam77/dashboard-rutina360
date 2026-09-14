@@ -1,192 +1,39 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { normalizeRoleKey, parseSessionUserCookie } from "@/lib/session";
 import CoachCreateRoutineButton from "@/components/roles/CoachCreateRoutineButton";
-import { getServerAccessToken } from "@/lib/auth-service";
-import { apiUrl } from "@/lib/api-url";
+import { getAssignmentsStrict, getRoutinesStrict, getUsersStrict } from "@/lib/backend";
+import { getUserRoleName, isAdminOrGymRoleName, resolveGymOwnerId, sameId } from "@/lib/roles";
+import {
+  getAssignmentRoutineId,
+  getRoutineExercises,
+  getRoutineOwnerCandidate,
+  getRoutineOwnerId,
+  isActiveRecord,
+} from "@/lib/routines";
+import { getViewer, getViewerGymOwnerId, isSuperAdmin } from "@/lib/viewer";
 
-const ROUTINES_URL = apiUrl("/routine");
-const USERS_URL = apiUrl("/users");
-const ASSIGNMENTS_URL = apiUrl("/routine/assign");
-
-async function fetchList(url, fallbackMessage, token) {
-  const response = await fetch(url, {
-    cache: "no-store",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-  const json = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(json?.message || fallbackMessage);
-  }
-
-  return Array.isArray(json?.data) ? json.data : [];
-}
-
-function getRoutineExercises(routine) {
-  if (Array.isArray(routine?.exercises)) {
-    return routine.exercises;
-  }
-
-  if (Array.isArray(routine?.Routine_Ejercices)) {
-    return routine.Routine_Ejercices;
-  }
-
-  if (Array.isArray(routine?.Ejercices)) {
-    return routine.Ejercices;
-  }
-
-  if (Array.isArray(routine?.RoutineEjercices)) {
-    return routine.RoutineEjercices;
-  }
-
-  return [];
-}
-
-function isActiveAssignment(assignment) {
-  return assignment?.isDeleted !== true && assignment?.isActive !== false;
-}
+export const metadata = {
+  title: "Rutinas creadas",
+};
 
 function getCreatorLabel(creator, creatorId) {
-  if (creator?.username) {
-    return creator.username;
-  }
-
-  if (creator?.email) {
-    return creator.email;
-  }
-
-  if (creatorId) {
-    return `Usuario #${creatorId}`;
-  }
-
-  return "Sin creador";
+  return (
+    creator?.username || creator?.email || (creatorId ? `Usuario #${creatorId}` : "Sin creador")
+  );
 }
 
 function getAthleteLabel(assignment) {
-  const athlete = assignment?.athlete;
-
-  if (athlete?.username) {
-    return athlete.username;
-  }
-
-  if (athlete?.email) {
-    return athlete.email;
-  }
-
-  if (assignment?.idAthlete) {
-    return `Usuario #${assignment.idAthlete}`;
-  }
-
-  return "Usuario sin dato";
-}
-
-function isAdminOrGymRoleName(value) {
-  return ["admin", "administrador", "gym", "gimnasio"].includes(
-    String(value || "").trim().toLowerCase()
-  );
-}
-
-function resolveGymOwnerId(candidate) {
-  if (!candidate) {
-    return null;
-  }
-
-  const roleName =
-    candidate?.Rol?.name ||
-    candidate?.role?.name ||
-    candidate?.Role?.name ||
-    candidate?.rol?.name ||
-    "";
-  if (isAdminOrGymRoleName(roleName)) {
-    const ownId = Number(candidate?.id);
-    return Number.isFinite(ownId) && ownId > 0 ? ownId : null;
-  }
-
-  const ownerId = Number(candidate?.idAdminOwner);
-  if (Number.isFinite(ownerId) && ownerId > 0) {
-    return ownerId;
-  }
-
-  const nestedOwnerId = Number(candidate?.adminOwner?.id);
-  return Number.isFinite(nestedOwnerId) && nestedOwnerId > 0 ? nestedOwnerId : null;
-}
-
-function getRoutineOwnerCandidate(routine) {
   return (
-    routine?.creator ||
-    routine?.Creator ||
-    routine?.User ||
-    routine?.user ||
-    routine?.Owner ||
-    routine?.owner ||
-    routine?.Coach ||
-    routine?.coach ||
-    null
+    assignment?.athlete?.username ||
+    assignment?.athlete?.email ||
+    (assignment?.idAthlete ? `Usuario #${assignment.idAthlete}` : "Usuario sin dato")
   );
-}
-
-function filterDataByViewerRole(routines, users, assignments, roleKey, viewerId) {
-  return { routines, users, assignments };
-}
-
-function classifyRoutineSource(row, roleKey, viewerId, viewerGymOwnerId = null) {
-  const ownerId = Number(row?.routine?.idUser);
-  const ownerRoleName = String(
-    row?.creator?.Rol?.name ||
-    row?.creator?.role?.name ||
-    row?.creator?.Role?.name ||
-    ""
-  ).trim().toLowerCase();
-  const ownerGymOwnerId = resolveGymOwnerId(row?.creator || null);
-
-  if (roleKey === "coach") {
-    if (ownerId === Number(viewerId)) {
-      return "own";
-    }
-
-    if (isAdminOrGymRoleName(ownerRoleName)) {
-      return "gym";
-    }
-
-    if (ownerRoleName === "coach") {
-      return "other_coaches";
-    }
-
-    if (viewerGymOwnerId && ownerGymOwnerId && Number(ownerGymOwnerId) === Number(viewerGymOwnerId)) {
-      if (ownerId === Number(viewerGymOwnerId)) {
-        return "gym";
-      }
-
-      return "other_coaches";
-    }
-
-    // Si llego hasta aca y es visible para el coach, mantenerla en el grupo de otros coaches
-    // para no ocultar rutinas por falta de metadatos del creador.
-    return "other_coaches";
-  }
-
-  if (roleKey === "admin") {
-    if (ownerId === Number(viewerId)) {
-      return "gym";
-    }
-
-    if (ownerRoleName === "coach") {
-      return "coaches";
-    }
-  }
-
-  return "all";
 }
 
 function buildRoutineRows(routines, assignments, users) {
   const routinesById = new Map();
   const usersById = new Map(users.map((user) => [String(user.id), user]));
-  const assignmentAthletesByRoutineId = new Map();
-  const assignmentNamesByRoutineId = new Map();
+  const athleteNamesByRoutineId = new Map();
 
   for (const routine of routines) {
     if (routine?.id) {
@@ -195,49 +42,44 @@ function buildRoutineRows(routines, assignments, users) {
   }
 
   for (const assignment of assignments) {
-    const routine = assignment?.Routine;
-    const routineId = assignment?.idRoutine || routine?.id;
+    const nestedRoutine = assignment?.Routine;
 
-    if (routine?.id && !routinesById.has(String(routine.id))) {
-      routinesById.set(String(routine.id), routine);
+    if (nestedRoutine?.id && !routinesById.has(String(nestedRoutine.id))) {
+      routinesById.set(String(nestedRoutine.id), nestedRoutine);
     }
 
-    if (!routineId || !isActiveAssignment(assignment)) {
+    const routineId = getAssignmentRoutineId(assignment);
+
+    if (!routineId || !isActiveRecord(assignment)) {
       continue;
     }
 
     const key = String(routineId);
-    const athleteKey = assignment?.idAthlete ? String(assignment.idAthlete) : `assignment-${assignment.id}`;
+    const athleteKey = assignment?.idAthlete
+      ? String(assignment.idAthlete)
+      : `assignment-${assignment.id}`;
 
-    if (!assignmentAthletesByRoutineId.has(key)) {
-      assignmentAthletesByRoutineId.set(key, new Set());
-      assignmentNamesByRoutineId.set(key, new Map());
+    if (!athleteNamesByRoutineId.has(key)) {
+      athleteNamesByRoutineId.set(key, new Map());
     }
-
-    assignmentAthletesByRoutineId.get(key).add(athleteKey);
-    assignmentNamesByRoutineId.get(key).set(athleteKey, getAthleteLabel(assignment));
+    athleteNamesByRoutineId.get(key).set(athleteKey, getAthleteLabel(assignment));
   }
 
   return Array.from(routinesById.values())
     .map((routine) => {
-      const routineId = String(routine.id);
-      const creator =
-        usersById.get(String(routine?.idUser)) ||
-        routine?.creator ||
-        routine?.Creator ||
-        routine?.User ||
-        routine?.user ||
-        routine?.Coach ||
-        routine?.coach ||
-        null;
-      const athleteIds = assignmentAthletesByRoutineId.get(routineId) || new Set();
-      const athleteNames = Array.from((assignmentNamesByRoutineId.get(routineId) || new Map()).values());
+      const ownerId = getRoutineOwnerId(routine);
+      const creator = usersById.get(String(ownerId)) || getRoutineOwnerCandidate(routine) || null;
+      const athleteNames = Array.from(
+        (athleteNamesByRoutineId.get(String(routine.id)) || new Map()).values()
+      );
 
       return {
         routine,
+        ownerId,
         creator,
-        creatorLabel: getCreatorLabel(creator, routine?.idUser),
-        assignedCount: athleteIds.size,
+        creatorLabel: getCreatorLabel(creator, ownerId),
+        creatorGymOwnerId: resolveGymOwnerId(creator),
+        assignedCount: athleteNames.length,
         athleteNames,
         exerciseCount: getRoutineExercises(routine).length,
       };
@@ -253,64 +95,105 @@ function buildRoutineRows(routines, assignments, users) {
     });
 }
 
-export default async function RutinasCreadasPage() {
-  const cookieStore = await cookies();
-  const token = await getServerAccessToken();
-  const sessionUser = parseSessionUserCookie(cookieStore.get("session_user")?.value);
+/**
+ * Alcance real de cada rol. Antes esta funcion devolvia todo sin filtrar, con
+ * lo cual cualquier perfil veia las rutinas de todos los gimnasios.
+ */
+function isRowVisibleFor(row, viewer, viewerGymOwnerId) {
+  if (isSuperAdmin(viewer)) {
+    return true;
+  }
 
-  if (!token) {
+  if (sameId(row.ownerId, viewer.id)) {
+    return true;
+  }
+
+  if (viewer.roleKey === "admin") {
+    return sameId(row.creatorGymOwnerId, viewer.id);
+  }
+
+  if (viewer.roleKey === "coach") {
+    return (
+      sameId(row.creatorGymOwnerId, viewerGymOwnerId) || sameId(row.ownerId, viewerGymOwnerId)
+    );
+  }
+
+  return false;
+}
+
+/** Cada fila visible cae en exactamente un grupo mostrado, para que los totales cierren. */
+function classifyRow(row, viewer, viewerGymOwnerId) {
+  if (isSuperAdmin(viewer)) {
+    return "all";
+  }
+
+  if (sameId(row.ownerId, viewer.id)) {
+    return "own";
+  }
+
+  if (viewer.roleKey === "admin") {
+    return "coaches";
+  }
+
+  if (sameId(row.ownerId, viewerGymOwnerId) || isAdminOrGymRoleName(getUserRoleName(row.creator))) {
+    return "gym";
+  }
+
+  return "other_coaches";
+}
+
+function getDisplayGroups(roleKey) {
+  if (roleKey === "coach") {
+    return [
+      { key: "own", label: "Rutinas del coach" },
+      { key: "other_coaches", label: "Rutinas de otros coaches del gym" },
+      { key: "gym", label: "Rutinas del gym" },
+    ];
+  }
+
+  if (roleKey === "admin") {
+    return [
+      { key: "own", label: "Rutinas del gym" },
+      { key: "coaches", label: "Rutinas de coaches del gym" },
+    ];
+  }
+
+  return [{ key: "all", label: "Todas las rutinas visibles" }];
+}
+
+export default async function RutinasCreadasPage() {
+  const viewer = await getViewer();
+
+  if (!viewer) {
     redirect("/login");
   }
 
   let rows = [];
   let errorMessage = "";
-  let roleKey = normalizeRoleKey(sessionUser?.roleName);
-  let viewerId = Number(sessionUser?.id) || null;
-  let viewerGymOwnerId = null;
+  const groupedRows = { own: [], other_coaches: [], gym: [], coaches: [], all: [] };
 
   try {
-    const [routines, users, assignments] = await Promise.all([
-      fetchList(ROUTINES_URL, "No se pudieron cargar las rutinas.", token),
-      fetchList(USERS_URL, "No se pudieron cargar los usuarios.", token),
-      fetchList(ASSIGNMENTS_URL, "No se pudieron cargar las asignaciones de rutinas.", token),
+    const [routines, users, assignments, viewerGymOwnerId] = await Promise.all([
+      getRoutinesStrict(viewer.token),
+      getUsersStrict(viewer.token),
+      getAssignmentsStrict(viewer.token),
+      getViewerGymOwnerId(),
     ]);
 
-    const filtered = filterDataByViewerRole(routines, users, assignments, roleKey, viewerId);
-    const viewerUser = filtered.users.find((item) => Number(item?.id) === Number(viewerId)) || null;
-    viewerGymOwnerId = resolveGymOwnerId(viewerUser);
-    rows = buildRoutineRows(filtered.routines, filtered.assignments, filtered.users);
+    rows = buildRoutineRows(routines, assignments, users).filter((row) =>
+      isRowVisibleFor(row, viewer, viewerGymOwnerId)
+    );
+
+    for (const row of rows) {
+      groupedRows[classifyRow(row, viewer, viewerGymOwnerId)].push(row);
+    }
   } catch (error) {
-    errorMessage = error.message;
+    errorMessage = error?.message || "No se pudieron cargar las rutinas.";
   }
 
   const assignedRoutinesCount = rows.filter((row) => row.assignedCount > 0).length;
   const totalAssignments = rows.reduce((total, row) => total + row.assignedCount, 0);
-  const groupedRows = rows.reduce(
-    (accumulator, row) => {
-      const source = classifyRoutineSource(row, roleKey, viewerId, viewerGymOwnerId);
-      if (!accumulator[source]) {
-        accumulator[source] = [];
-      }
-      accumulator[source].push(row);
-      return accumulator;
-    },
-    { own: [], other_coaches: [], gym: [], coaches: [], all: [] }
-  );
-
-  const displayGroups =
-    roleKey === "coach"
-      ? [
-          { key: "own", label: "Rutinas del coach" },
-          { key: "other_coaches", label: "Rutinas de otros coaches del gym" },
-          { key: "gym", label: "Rutinas del gym" },
-          { key: "all", label: "Otras rutinas visibles" },
-        ]
-      : roleKey === "admin"
-        ? [
-            { key: "gym", label: "Rutinas del gym" },
-            { key: "coaches", label: "Rutinas de coaches del gym" },
-          ]
-        : [{ key: "all", label: "Todas las rutinas visibles" }];
+  const displayGroups = getDisplayGroups(viewer.roleKey);
 
   return (
     <section className="space-y-6">
@@ -318,14 +201,20 @@ export default async function RutinasCreadasPage() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-white">Rutinas creadas</h1>
-            <p className="mt-3 text-white/80">Listado de rutinas visibles segun tu perfil, coach propietario y asignaciones.</p>
+            <p className="mt-3 text-white/80">
+              Listado de rutinas visibles segun tu perfil, coach propietario y asignaciones.
+            </p>
           </div>
-          {(roleKey === "coach" || roleKey === "admin") && viewerId ? <CoachCreateRoutineButton coachId={viewerId} /> : null}
+          {viewer.roleKey === "coach" || viewer.roleKey === "admin" ? (
+            <CoachCreateRoutineButton coachId={viewer.id} />
+          ) : null}
         </div>
       </header>
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-red-300/40 bg-red-950/40 p-4 text-red-200">{errorMessage}</div>
+        <div className="rounded-2xl border border-red-300/40 bg-red-950/40 p-4 text-red-200">
+          {errorMessage}
+        </div>
       ) : null}
 
       {!errorMessage ? (
@@ -346,20 +235,28 @@ export default async function RutinasCreadasPage() {
       ) : null}
 
       {!errorMessage && rows.length === 0 ? (
-        <div className="rounded-2xl border border-white/15 bg-[#17385a] p-6 text-white/80 shadow-sm">No hay rutinas visibles para tu perfil.</div>
+        <div className="rounded-2xl border border-white/15 bg-[#17385a] p-6 text-white/80 shadow-sm">
+          No hay rutinas visibles para tu perfil.
+        </div>
       ) : null}
 
       {!errorMessage && rows.length > 0 ? (
         <div className="space-y-4">
           {displayGroups.map((group) => {
             const groupRows = groupedRows[group.key] || [];
+
             if (groupRows.length === 0) {
               return null;
             }
 
             return (
-              <section key={group.key} className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-                <h2 className="mb-4 text-base font-semibold text-white">{group.label}</h2>
+              <section
+                key={group.key}
+                className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
+              >
+                <h2 className="mb-4 text-base font-semibold text-white">
+                  {group.label} ({groupRows.length})
+                </h2>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-white/10 text-left text-sm">
                     <thead>
@@ -379,13 +276,19 @@ export default async function RutinasCreadasPage() {
                         return (
                           <tr key={`${group.key}-${routine.id}`} className="align-top">
                             <td className="px-3 py-4">
-                              <p className="font-semibold text-white">{routine?.name || `Rutina #${routine.id}`}</p>
+                              <p className="font-semibold text-white">
+                                {routine?.name || `Rutina #${routine.id}`}
+                              </p>
                               <p className="mt-1 text-xs text-white/60">ID {routine.id}</p>
-                              <p className="mt-1 text-xs text-white/60">Orden {routine?.order || "-"} - {routine?.time || "-"} min</p>
+                              <p className="mt-1 text-xs text-white/60">
+                                Orden {routine?.order || "-"} - {routine?.time || "-"} min
+                              </p>
                             </td>
                             <td className="px-3 py-4">
                               <p className="font-medium text-white">{row.creatorLabel}</p>
-                              <p className="mt-1 text-xs text-white/60">{row.creator?.email || `ID ${routine?.idUser || "-"}`}</p>
+                              <p className="mt-1 text-xs text-white/60">
+                                {row.creator?.email || `ID ${row.ownerId || "-"}`}
+                              </p>
                             </td>
                             <td className="px-3 py-4">
                               <span className="inline-flex rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100">
@@ -394,7 +297,9 @@ export default async function RutinasCreadasPage() {
                               {row.athleteNames.length > 0 ? (
                                 <p className="mt-2 max-w-xs text-xs text-white/65">
                                   {row.athleteNames.slice(0, 3).join(", ")}
-                                  {row.athleteNames.length > 3 ? ` y ${row.athleteNames.length - 3} mas` : ""}
+                                  {row.athleteNames.length > 3
+                                    ? ` y ${row.athleteNames.length - 3} mas`
+                                    : ""}
                                 </p>
                               ) : null}
                             </td>

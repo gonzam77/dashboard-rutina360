@@ -1,31 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { isAthleteRoleName, isCoachRoleName, normalizeRoleKey } from "@/lib/roles";
 
-function normalizeRoleName(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function isAthleteRole(value) {
-  return ["athlete", "atleta"].includes(normalizeRoleName(value));
-}
-
-function isCoachRole(value) {
-  return normalizeRoleName(value) === "coach";
-}
-
-function isAdminOrGymRole(value) {
-  return ["admin", "administrador", "gym", "gimnasio"].includes(normalizeRoleName(value));
-}
+const WEEKLY_AVAILABILITY_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map(
+  (days) => `${days} dia${days === 1 ? "" : "s"} a la semana`
+);
 
 export default function UserProfileEditor({ user, roleName }) {
   const router = useRouter();
-  const normalizedRoleName = useMemo(() => normalizeRoleName(roleName), [roleName]);
-  const athleteRole = isAthleteRole(normalizedRoleName);
-  const coachRole = isCoachRole(normalizedRoleName);
+  const athleteRole = isAthleteRoleName(roleName);
+  const coachRole = isCoachRoleName(roleName);
   const requiresDni = athleteRole || coachRole;
-  const showPersonalData = !isAdminOrGymRole(normalizedRoleName);
+  const showPersonalData = normalizeRoleKey(roleName) !== "admin";
 
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -103,8 +91,9 @@ export default function UserProfileEditor({ user, roleName }) {
           ...(form.dni.trim() ? { dni: form.dni.trim() } : {}),
           username: form.username,
           email: form.email,
-          phone: form.phone,
-          address: form.address,
+          // Se envian siempre, incluso vacios: es la unica forma de borrarlos.
+          phone: form.phone.trim(),
+          address: form.address.trim(),
           ...(form.password.trim() ? { password: form.password.trim() } : {}),
           ...(showPersonalData ? { birthDate: form.birthDate, gender: form.gender } : {}),
           ...(athleteRole
@@ -125,8 +114,8 @@ export default function UserProfileEditor({ user, roleName }) {
       }
 
       setMessage("Datos actualizados correctamente.");
-      setIsEditing(false);
       updateField("password", "");
+      setIsEditing(false);
       router.refresh();
     } catch {
       setError("Error de conexion al actualizar el usuario.");
@@ -276,13 +265,11 @@ export default function UserProfileEditor({ user, roleName }) {
                 className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white md:col-span-2"
               >
                 <option value="" disabled>Seleccionar disponibilidad semanal</option>
-                <option value="1 dia a la semana">1 dia a la semana</option>
-                <option value="2 dias a la semana">2 dias a la semana</option>
-                <option value="3 dias a la semana">3 dias a la semana</option>
-                <option value="4 dias a la semana">4 dias a la semana</option>
-                <option value="5 dias a la semana">5 dias a la semana</option>
-                <option value="6 dias a la semana">6 dias a la semana</option>
-                <option value="7 dias a la semana">7 dias a la semana</option>
+                {WEEKLY_AVAILABILITY_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
               </select>
             </>
           ) : null}
