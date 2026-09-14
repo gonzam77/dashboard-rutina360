@@ -1,159 +1,410 @@
-﻿import Link from "next/link";
-import { getRoles } from "@/lib/backend";
-import { isAthleteRoleName } from "@/lib/roles";
-import { getViewer } from "@/lib/viewer";
+import Link from "next/link";
+import Icon from "@/components/ui/Icon";
+import PageHeader from "@/components/ui/PageHeader";
+import { SectionCard } from "@/components/ui/Card";
+import { Alert, EmptyState, StatCard } from "@/components/ui/Feedback";
+import {
+  getAssignments,
+  getExercises,
+  getRoles,
+  getRoutines,
+  getUserLinks,
+  getUsers,
+} from "@/lib/backend";
+import {
+  getUserRoleName,
+  isAdminOrGymRoleName,
+  isAthleteRoleName,
+  isCoachRoleName,
+  resolveGymOwnerId,
+  sameId,
+} from "@/lib/roles";
+import { getAssignmentRoutineId, getRoutineOwnerId, isActiveRecord } from "@/lib/routines";
+import { getViewer, getViewerGymOwnerId, isSuperAdmin } from "@/lib/viewer";
 
 export const metadata = {
   title: "Panel",
 };
 
-function buildRoleHome({ roleKey, isGymRole, profileHref, athletesHref }) {
-
+function buildRoleHome({ roleKey, isGymRole }) {
   if (roleKey === "super_admin") {
     return {
-      title: "Panel de Super Administrador",
+      eyebrow: "Super administrador",
+      title: "Panel general",
       description: "Administra gimnasios, usuarios y visibilidad global del sistema.",
-      actions: [
-        ...(profileHref ? [{ href: profileHref, label: "Ir a mi perfil" }] : []),
-        { href: "/inicio/roles-usuarios", label: "Gestionar Roles" },
-        { href: "/inicio/rutinas-creadas", label: "Rutinas globales" },
-        { href: "/inicio/catalogo-ejercicios", label: "Gestionar catalogo" },
-      ],
     };
   }
 
   if (roleKey === "admin") {
-    if (isGymRole) {
-      return {
-        title: "Panel del Gimnasio",
-        description: "Gestiona coaches, atletas y rutinas de tu gimnasio.",
-        actions: [
-          ...(profileHref ? [{ href: profileHref, label: "Ir a mi perfil" }] : []),
-          { href: "/inicio/roles-usuarios", label: "Gestionar coaches y atletas" },
-          { href: "/inicio/rutinas-creadas", label: "Rutinas del gimnasio" },
-          { href: "/inicio/catalogo-ejercicios", label: "Gestionar catalogo" },
-        ],
-      };
-    }
-
-    return {
-      title: "Panel del Administrador",
-      description: "Gestiona los roles y usuarios de tu propia estructura.",
-      actions: [
-        ...(profileHref ? [{ href: profileHref, label: "Ir a mi perfil" }] : []),
-        { href: "/inicio/roles-usuarios", label: "Gestionar roles y usuarios" },
-      ],
-    };
+    return isGymRole
+      ? {
+          eyebrow: "Gimnasio",
+          title: "Panel del gimnasio",
+          description: "Gestiona coaches, atletas y rutinas de tu gimnasio.",
+        }
+      : {
+          eyebrow: "Administrador",
+          title: "Panel administrativo",
+          description: "Gestiona los roles y usuarios de tu propia estructura.",
+        };
   }
 
   if (roleKey === "coach") {
     return {
-      title: "Panel del Coach",
+      eyebrow: "Coach",
+      title: "Tu panel",
       description: "Administra tus atletas y tus rutinas activas.",
-      actions: [
-        ...(profileHref ? [{ href: profileHref, label: "Ir a mi perfil" }] : []),
-        ...(athletesHref ? [{ href: athletesHref, label: "Ver atletas del gym" }] : []),
-        { href: "/inicio/rutinas-creadas", label: "Mis rutinas" },
-      ],
     };
   }
 
   return {
-    title: "Bienvenido al Dashboard",
+    eyebrow: "Rutina360",
+    title: "Bienvenido al panel",
     description: "Selecciona una opcion del menu lateral para gestionar el sistema.",
-    actions: [{ href: "/inicio/roles-usuarios", label: "Ir a Roles y Usuarios" }],
   };
 }
 
-function getActionStyle(index) {
-  const variants = [
-    {
-      ring: "from-cyan-400 to-sky-400",
-      glow: "group-hover:shadow-cyan-400/30",
-      icon: "M12 2a10 10 0 100 20 10 10 0 000-20zm0 5a3 3 0 110 6 3 3 0 010-6zm0 13a8 8 0 01-6.4-3.2A6.5 6.5 0 0112 14a6.5 6.5 0 016.4 2.8A8 8 0 0112 20z",
-    },
-    {
-      ring: "from-cyan-500 to-blue-400",
-      glow: "group-hover:shadow-cyan-400/30",
-      icon: "M4 5h16a1 1 0 011 1v2H3V6a1 1 0 011-1zm-1 5h18v8a1 1 0 01-1 1H4a1 1 0 01-1-1v-8zm4 3v2h4v-2H7z",
-    },
-    {
-      ring: "from-sky-400 to-cyan-500",
-      glow: "group-hover:shadow-sky-400/30",
-      icon: "M6 4h12a2 2 0 012 2v12l-4-2-4 2-4-2-4 2V6a2 2 0 012-2zm2 4h8v2H8V8zm0 4h6v2H8v-2z",
-    },
-    {
-      ring: "from-cyan-300 to-sky-500",
-      glow: "group-hover:shadow-cyan-300/30",
-      icon: "M11 2h2v3h-2V2zm5.66 2.34l1.41 1.41-2.12 2.12-1.41-1.41 2.12-2.12zM19 11h3v2h-3v-2zM4 11h3v2H4v-2zm2.34-6.66l2.12 2.12-1.41 1.41L4.93 5.75l1.41-1.41zM12 7a5 5 0 00-5 5c0 1.93 1.09 3.6 2.68 4.43L10 22h4l.32-5.57A5 5 0 0012 7z",
-    },
-  ];
+/**
+ * Metricas y atajos reales del panel.
+ *
+ * Hasta ahora la home solo repetia los enlaces del menu lateral, sin un solo
+ * dato: habia que entrar a cada seccion para saber cuantos atletas o rutinas
+ * habia. Cada rol ve unicamente lo que su alcance le permite, el mismo criterio
+ * que aplican las paginas de detalle.
+ */
+async function loadDashboard(viewer) {
+  const [users, roles, routines, assignments, exercises, userLinks, gymOwnerId] = await Promise.all([
+    getUsers(viewer.token),
+    getRoles(viewer.token),
+    getRoutines(viewer.token),
+    getAssignments(viewer.token),
+    getExercises(viewer.token),
+    getUserLinks(viewer.token),
+    getViewerGymOwnerId(),
+  ]);
 
-  return variants[index % variants.length];
+  const athleteRoleId = Number(roles.find((role) => isAthleteRoleName(role?.name))?.id) || null;
+  const coachRoleId = Number(roles.find((role) => isCoachRoleName(role?.name))?.id) || null;
+
+  const inScope = (user) => {
+    if (isSuperAdmin(viewer)) {
+      return true;
+    }
+
+    if (sameId(user?.id, viewer.id)) {
+      return false;
+    }
+
+    return sameId(resolveGymOwnerId(user), gymOwnerId);
+  };
+
+  const athletes = users.filter((user) => isAthleteRoleName(getUserRoleName(user)) && inScope(user));
+  const coaches = users.filter((user) => isCoachRoleName(getUserRoleName(user)) && inScope(user));
+  const gyms = users.filter((user) => isAdminOrGymRoleName(getUserRoleName(user)));
+
+  const visibleRoutines = routines.filter((routine) => {
+    if (isSuperAdmin(viewer)) {
+      return true;
+    }
+
+    const ownerId = getRoutineOwnerId(routine);
+    return sameId(ownerId, viewer.id) || sameId(ownerId, gymOwnerId);
+  });
+
+  const ownRoutines = routines.filter((routine) =>
+    sameId(getRoutineOwnerId(routine), viewer.id)
+  );
+
+  const activeAssignments = assignments.filter(isActiveRecord);
+  const assignedRoutineIds = new Set(
+    activeAssignments.map((assignment) => String(getAssignmentRoutineId(assignment)))
+  );
+
+  // Atletas vinculados a este coach, para el atajo "Mis atletas".
+  const ownAthleteIds = new Set(
+    userLinks
+      .filter((link) => isActiveRecord(link) && sameId(link?.idCoach || link?.coach?.id, viewer.id))
+      .map((link) => String(link?.idAthlete || link?.athlete?.id))
+  );
+  const ownAthletes = athletes.filter((athlete) => ownAthleteIds.has(String(athlete?.id)));
+
+  return {
+    athleteRoleId,
+    coachRoleId,
+    athletes,
+    coaches,
+    gyms,
+    ownAthletes,
+    visibleRoutines,
+    ownRoutines,
+    exerciseCount: exercises.length,
+    roleCount: roles.length,
+    assignedRoutineCount: assignedRoutineIds.size,
+    activeAssignmentCount: activeAssignments.length,
+  };
+}
+
+function buildStats({ roleKey, isGymRole, data }) {
+  if (roleKey === "super_admin") {
+    return [
+      { label: "Gimnasios", value: data.gyms.length, icon: "gym" },
+      { label: "Coaches", value: data.coaches.length, icon: "usuarios" },
+      { label: "Atletas", value: data.athletes.length, icon: "perfil" },
+      {
+        label: "Rutinas",
+        value: data.visibleRoutines.length,
+        hint: `${data.assignedRoutineCount} asignadas`,
+        icon: "rutinas",
+      },
+    ];
+  }
+
+  if (roleKey === "admin" && isGymRole) {
+    return [
+      { label: "Coaches", value: data.coaches.length, icon: "usuarios" },
+      { label: "Atletas", value: data.athletes.length, icon: "perfil" },
+      {
+        label: "Rutinas del gym",
+        value: data.visibleRoutines.length,
+        hint: `${data.assignedRoutineCount} asignadas`,
+        icon: "rutinas",
+      },
+      { label: "Ejercicios", value: data.exerciseCount, icon: "catalogo" },
+    ];
+  }
+
+  if (roleKey === "admin") {
+    return [
+      { label: "Usuarios a cargo", value: data.coaches.length + data.athletes.length, icon: "usuarios" },
+      { label: "Roles del sistema", value: data.roleCount, icon: "panel" },
+      { label: "Ejercicios", value: data.exerciseCount, icon: "catalogo" },
+    ];
+  }
+
+  if (roleKey === "coach") {
+    return [
+      { label: "Mis atletas", value: data.ownAthletes.length, icon: "perfil" },
+      { label: "Atletas del gym", value: data.athletes.length, icon: "usuarios" },
+      {
+        label: "Mis rutinas",
+        value: data.ownRoutines.length,
+        hint: `${data.visibleRoutines.length} visibles en total`,
+        icon: "rutinas",
+      },
+      { label: "Asignaciones activas", value: data.activeAssignmentCount, icon: "check" },
+    ];
+  }
+
+  return [];
+}
+
+function buildShortcuts({ roleKey, isGymRole, profileHref, athletesHref, coachesHref }) {
+  const shortcuts = [];
+
+  if (roleKey === "coach") {
+    if (athletesHref) {
+      shortcuts.push({
+        href: athletesHref,
+        label: "Atletas del gym",
+        description: "Ver, buscar y abrir el perfil de cada atleta.",
+        icon: "usuarios",
+      });
+    }
+    shortcuts.push({
+      href: "/inicio/rutinas-creadas",
+      label: "Mis rutinas",
+      description: "Crear rutinas y revisar a quien estan asignadas.",
+      icon: "rutinas",
+    });
+  } else {
+    shortcuts.push({
+      href: "/inicio/roles-usuarios",
+      label: roleKey === "super_admin" ? "Roles y usuarios" : "Coaches y atletas",
+      description: "Estructura de roles y alta de usuarios.",
+      icon: "usuarios",
+    });
+
+    if (roleKey === "super_admin" || isGymRole) {
+      shortcuts.push({
+        href: "/inicio/rutinas-creadas",
+        label: roleKey === "super_admin" ? "Rutinas globales" : "Rutinas del gimnasio",
+        description: "Listado completo con creador y asignaciones.",
+        icon: "rutinas",
+      });
+    }
+
+    shortcuts.push({
+      href: "/inicio/catalogo-ejercicios",
+      label: "Catalogo de ejercicios",
+      description: "Grupos musculares y ejercicios disponibles.",
+      icon: "catalogo",
+    });
+
+    if (coachesHref && roleKey !== "super_admin") {
+      shortcuts.push({
+        href: coachesHref,
+        label: "Coaches",
+        description: "Ir directo al listado de coaches del gimnasio.",
+        icon: "gym",
+      });
+    }
+  }
+
+  if (profileHref) {
+    shortcuts.push({
+      href: profileHref,
+      label: "Mi perfil",
+      description: "Tus datos de cuenta y accesos.",
+      icon: "perfil",
+    });
+  }
+
+  return shortcuts;
+}
+
+function PeopleShortlist({ title, description, users, roleId, emptyText }) {
+  return (
+    <SectionCard
+      title={title}
+      description={description}
+      icon={<Icon name="usuarios" className="text-acento" />}
+      actions={
+        roleId ? (
+          <Link href={`/inicio/roles-usuarios/${roleId}`} className="r360-btn r360-btn-accent r360-btn-sm">
+            Ver todos
+            <Icon name="chevron" />
+          </Link>
+        ) : null
+      }
+    >
+      {users.length === 0 ? (
+        <EmptyState title={emptyText} description="Cuando haya altas, apareceran aca." />
+      ) : (
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {users.slice(0, 6).map((user) => (
+            <li key={user.id}>
+              <Link
+                href={`/inicio/roles-usuarios/${roleId}/${user.id}`}
+                className="r360-card-inset r360-card-link flex items-center gap-3 px-3 py-2.5"
+              >
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-acento/35 bg-acento/10 text-sm font-bold text-acento">
+                  {String(user.username || "?").charAt(0).toUpperCase()}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-texto">
+                    {user.username || `Usuario #${user.id}`}
+                  </span>
+                  <span className="block truncate text-xs text-texto-3">
+                    {user.email || "Sin email"}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </SectionCard>
+  );
 }
 
 export default async function InicioPage() {
   const viewer = await getViewer();
   const roleKey = viewer?.roleKey || "unknown";
+  const isGymRole = Boolean(viewer?.isGym);
+  const view = buildRoleHome({ roleKey, isGymRole });
+
+  let data = null;
+  let errorMessage = "";
+
+  try {
+    data = viewer ? await loadDashboard(viewer) : null;
+  } catch (error) {
+    errorMessage = error?.message || "No se pudieron cargar los datos del panel.";
+  }
+
   const ownRoleId = Number(viewer?.roleId);
   const ownUserId = Number(viewer?.id);
   const profileHref =
     ownRoleId > 0 && ownUserId > 0 ? `/inicio/roles-usuarios/${ownRoleId}/${ownUserId}` : "";
+  const athletesHref = data?.athleteRoleId ? `/inicio/roles-usuarios/${data.athleteRoleId}` : "";
+  const coachesHref = data?.coachRoleId ? `/inicio/roles-usuarios/${data.coachRoleId}` : "";
 
-  const roles = viewer ? await getRoles(viewer.token) : [];
-  const athleteRoleId = Number(roles.find((role) => isAthleteRoleName(role?.name))?.id) || null;
-  const athletesHref = athleteRoleId ? `/inicio/roles-usuarios/${athleteRoleId}` : "";
-
-  const view = buildRoleHome({
-    roleKey,
-    isGymRole: Boolean(viewer?.isGym),
-    profileHref,
-    athletesHref,
-  });
+  const stats = data ? buildStats({ roleKey, isGymRole, data }) : [];
+  const shortcuts = buildShortcuts({ roleKey, isGymRole, profileHref, athletesHref, coachesHref });
 
   return (
-    <div className="space-y-6">
-      <header className="relative overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-[#0f2a46] via-[#123355] to-[#17385a] p-8 text-white shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
-        <div className="absolute -right-14 -top-14 h-44 w-44 rounded-full bg-cyan-400/20 blur-2xl" />
-        <div className="absolute -bottom-10 left-8 h-32 w-32 rounded-full bg-sky-400/20 blur-2xl" />
-        <div className="relative">
-          <p className="text-xs uppercase tracking-[0.2em] text-white/65">Rutina360</p>
-          <h1 className="mt-2 text-3xl font-semibold">{view.title}</h1>
-          <p className="mt-3 max-w-2xl text-white/80">{view.description}</p>
-        </div>
-      </header>
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow={view.eyebrow}
+        title={view.title}
+        description={view.description}
+        meta={
+          viewer?.username ? (
+            <span className="r360-badge r360-badge-neutro">
+              <Icon name="perfil" />
+              {viewer.username}
+            </span>
+          ) : null
+        }
+      />
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {view.actions.map((action, index) => {
-          const style = getActionStyle(index);
+      {errorMessage ? <Alert title="No se pudieron cargar las metricas">{errorMessage}</Alert> : null}
 
-          return (
+      {stats.length > 0 ? (
+        <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+          {stats.map((stat) => (
+            <StatCard key={stat.label} {...stat} />
+          ))}
+        </section>
+      ) : null}
+
+      <SectionCard
+        title="Accesos rapidos"
+        description="Las acciones que mas se usan, a un click."
+        icon={<Icon name="panel" className="text-acento" />}
+      >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {shortcuts.map((shortcut) => (
             <Link
-              key={action.href}
-              href={action.href}
-              className={`group relative overflow-hidden rounded-3xl border border-white/15 bg-[#17385a] p-5 shadow-[0_8px_24px_rgba(0,0,0,0.28)] transition duration-300 hover:-translate-y-1 hover:border-cyan-300/35 hover:bg-[#1b426a] hover:shadow-xl ${style.glow}`}
+              key={`${shortcut.href}-${shortcut.label}`}
+              href={shortcut.href}
+              className="r360-card-inset r360-card-link group flex items-start gap-3 p-4"
             >
-              <div className={`absolute right-0 top-0 h-1 w-full bg-gradient-to-r ${style.ring}`} />
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-base font-semibold text-white transition group-hover:text-cyan-100">
-                    {action.label}
-                  </p>
-                  <p className="mt-2 text-sm text-white/70">Acceso rápido</p>
-                </div>
-                <div className={`rounded-xl bg-gradient-to-br p-3 text-white shadow-md ${style.ring}`}>
-                  <svg viewBox="0 0 24 24" className="h-8 w-8 fill-current" aria-hidden="true">
-                    <path d={style.icon} />
-                  </svg>
-                </div>
-              </div>
-              <div className="mt-4 inline-flex items-center rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-1.5 text-xs font-medium text-cyan-100 transition group-hover:bg-cyan-300/20">
-                Abrir módulo
-              </div>
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-acento/12 text-lg text-acento">
+                <Icon name={shortcut.icon} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold text-texto">{shortcut.label}</span>
+                <span className="mt-1 block text-xs text-texto-2">{shortcut.description}</span>
+              </span>
+              <Icon
+                name="chevron"
+                className="mt-1 text-texto-3 transition group-hover:translate-x-0.5 group-hover:text-acento"
+              />
             </Link>
-          );
-        })}
-      </section>
+          ))}
+        </div>
+      </SectionCard>
+
+      {data && roleKey === "coach" ? (
+        <PeopleShortlist
+          title="Mis atletas"
+          description="Atletas vinculados a tu cuenta."
+          users={data.ownAthletes}
+          roleId={data.athleteRoleId}
+          emptyText="Todavia no tenes atletas vinculados"
+        />
+      ) : null}
+
+      {data && roleKey !== "coach" && data.athletes.length > 0 ? (
+        <PeopleShortlist
+          title="Ultimos atletas"
+          description="Acceso directo al perfil de cada atleta."
+          users={data.athletes}
+          roleId={data.athleteRoleId}
+          emptyText="Todavia no hay atletas cargados"
+        />
+      ) : null}
     </div>
   );
 }

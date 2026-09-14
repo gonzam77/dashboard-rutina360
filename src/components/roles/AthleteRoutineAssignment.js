@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Icon from "@/components/ui/Icon";
+import { Alert, EmptyState } from "@/components/ui/Feedback";
 
 const GROUP_LABELS = {
   own: "Mias",
@@ -107,8 +109,14 @@ export default function AthleteRoutineAssignment({
   }
 
   return (
-    <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-      <h2 className="text-lg font-semibold text-white">Gestion de rutina del atleta</h2>
+    <section className="r360-card p-6">
+      <h2 className="flex items-center gap-2 text-lg font-bold text-texto">
+        <Icon name="mas" className="text-acento" />
+        Asignar una rutina
+      </h2>
+      <p className="mt-1 text-sm text-texto-2">
+        La rutina aparece en la app del atleta apenas se asigna.
+      </p>
 
       {filterOptions.length > 1 ? (
         <div className="mt-3 flex flex-wrap gap-2">
@@ -122,8 +130,8 @@ export default function AthleteRoutineAssignment({
               }}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                 activeFilter === option.key
-                  ? "border border-cyan-300/40 bg-cyan-300/20 text-cyan-100"
-                  : "border border-white/20 bg-[#0f2a46] text-white/80 hover:bg-white/10"
+                  ? "border border-acento/45 bg-acento/20 text-acento"
+                  : "border border-linea bg-superficie-alta text-texto-2 hover:border-acento/35 hover:text-texto"
               }`}
             >
               {option.label}
@@ -133,30 +141,41 @@ export default function AthleteRoutineAssignment({
       ) : null}
 
       {availableRoutines.length === 0 ? (
-        <p className="mt-3 text-sm text-white/75">
-          No hay rutinas del coach o del gimnasio disponibles para asignar.
-        </p>
+        <EmptyState
+          className="mt-4"
+          icon="rutinas"
+          title="No hay rutinas disponibles para asignar"
+          description="Crea una rutina desde la seccion Rutinas, o pedile al gimnasio que comparta las suyas."
+        />
       ) : unassignedRoutines.length === 0 ? (
-        <p className="mt-3 text-sm text-white/75">
-          Este atleta ya tiene asignadas todas las rutinas disponibles.
-        </p>
+        <EmptyState
+          className="mt-4"
+          icon="check"
+          title="Ya tiene todas las rutinas disponibles"
+          description="Este atleta tiene asignadas todas las rutinas a las que llegas."
+        />
       ) : filteredRoutines.length === 0 ? (
-        <p className="mt-3 text-sm text-white/75">No hay rutinas disponibles en este filtro.</p>
+        <EmptyState
+          className="mt-4"
+          icon="buscar"
+          title="No hay rutinas en este filtro"
+          description="Proba con la pestana Todas."
+        />
       ) : (
         <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={handleAssignRoutine}>
-          <label className="flex min-w-[260px] flex-col text-sm text-white/85">
-            Rutina disponible
+          <label className="flex min-w-[260px] flex-1 flex-col">
+            <span className="r360-label">Rutina disponible</span>
             <select
               required
               value={selectedRoutineId}
               onChange={(event) => setSelectedRoutineId(event.target.value)}
-              className="mt-1 rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white"
+              className="r360-input"
             >
-              <option value="" disabled className="bg-[#0f2a46] text-white">
+              <option value="" disabled className="bg-superficie-alta text-texto">
                 Seleccionar rutina
               </option>
               {filteredRoutines.map((routine) => (
-                <option key={routine.id} value={routine.id} className="bg-[#0f2a46] text-white">
+                <option key={routine.id} value={routine.id} className="bg-superficie-alta text-texto">
                   {routine.name || `Rutina #${routine.id}`} (ID {routine.id})
                 </option>
               ))}
@@ -165,15 +184,19 @@ export default function AthleteRoutineAssignment({
           <button
             type="submit"
             disabled={loadingAssign}
-            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60"
+            className="r360-btn r360-btn-primary"
           >
             {loadingAssign ? "Asignando..." : "Asignar rutina"}
           </button>
         </form>
       )}
 
-      {message ? <p className="mt-3 text-sm text-cyan-100">{message}</p> : null}
-      {error ? <p className="mt-3 text-sm text-rose-200">{error}</p> : null}
+      {message ? (
+        <Alert tone="exito" className="mt-4">
+          {message}
+        </Alert>
+      ) : null}
+      {error ? <Alert className="mt-4">{error}</Alert> : null}
     </section>
   );
 }

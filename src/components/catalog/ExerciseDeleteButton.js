@@ -88,12 +88,12 @@ export default function ExerciseDeleteButton({
               ? "Eliminando ejercicio"
               : "Eliminar ejercicio"
         }
-        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300/40 bg-rose-900/20 text-rose-100 transition hover:bg-rose-900/35 hover:text-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+        className="r360-btn r360-btn-danger h-9 w-9 min-h-0 p-0"
       >
         <TrashIcon />
         <span className="sr-only">{loading ? "Eliminando ejercicio" : "Eliminar ejercicio"}</span>
       </button>
-      {error ? <p className="mt-2 max-w-44 text-right text-xs text-rose-200">{error}</p> : null}
+      {error ? <p className="mt-2 max-w-44 text-right text-xs text-peligro">{error}</p> : null}
 
       <ConfirmDialog
         open={isConfirmOpen}

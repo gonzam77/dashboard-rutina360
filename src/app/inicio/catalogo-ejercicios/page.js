@@ -1,6 +1,10 @@
 import { revalidatePath } from "next/cache";
 import CatalogCreateForm from "@/components/catalog/CatalogCreateForm";
 import ExerciseDeleteButton from "@/components/catalog/ExerciseDeleteButton";
+import Icon from "@/components/ui/Icon";
+import PageHeader from "@/components/ui/PageHeader";
+import { Card } from "@/components/ui/Card";
+import { Alert, EmptyState } from "@/components/ui/Feedback";
 import {
   apiRequest,
   getAssignmentsStrict,
@@ -207,44 +211,64 @@ export default async function CatalogoEjerciciosPage() {
     errorMessage = error?.message || "No se pudo cargar el catalogo.";
   }
 
+  const totalExercises = exercises.length;
+
   return (
-    <section className="space-y-6">
-      <header className="rounded-3xl border border-white/15 bg-[#0f2a46] p-8 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
-        <h1 className="text-3xl font-extrabold text-white">Catalogo ejercicios</h1>
-        <p className="mt-3 text-white/80">Grupos musculares y ejercicios asociados del sistema.</p>
-        {canManageMuscles ? (
+    <section className="space-y-5">
+      <PageHeader
+        eyebrow="Catalogo"
+        title="Catalogo de ejercicios"
+        description="Grupos musculares y ejercicios disponibles para armar rutinas."
+        breadcrumbs={[{ href: "/inicio", label: "Panel" }, { label: "Catalogo ejercicios" }]}
+        meta={
+          <>
+            <span className="r360-badge r360-badge-neutro">
+              {muscleGroups.length} grupo{muscleGroups.length === 1 ? "" : "s"}
+            </span>
+            <span className="r360-badge r360-badge-acento">
+              {totalExercises} ejercicio{totalExercises === 1 ? "" : "s"}
+            </span>
+          </>
+        }
+      />
+
+      {canManageMuscles ? (
+        <Card>
+          <h2 className="flex items-center gap-2 text-base font-bold text-texto">
+            <Icon name="mas" className="text-acento" />
+            Nuevo grupo muscular
+          </h2>
           <CatalogCreateForm
             action={createMuscleGroup}
-            className="mt-6"
-            inputClassName="bg-[#17385a]"
+            className="mt-4"
             placeholder="Nuevo grupo muscular (ej: Lumbares)"
             submitLabel="Agregar grupo muscular"
             pendingLabel="Agregando..."
           />
-        ) : null}
-      </header>
-
-      {errorMessage ? (
-        <div className="rounded-2xl border border-red-300/40 bg-red-950/40 p-4 text-red-200">
-          {errorMessage}
-        </div>
+        </Card>
       ) : null}
 
+      {errorMessage ? <Alert title="No se pudo cargar el catalogo">{errorMessage}</Alert> : null}
+
       {!errorMessage && routineUsageWarning ? (
-        <div className="rounded-2xl border border-amber-300/40 bg-amber-900/30 p-4 text-sm text-amber-100">
+        <Alert tone="aviso" title="Uso de ejercicios no verificado">
           {routineUsageWarning} Las eliminaciones seguiran pidiendo confirmacion, pero no se pudo
           anticipar si el ejercicio esta vinculado a una rutina.
-        </div>
+        </Alert>
       ) : null}
 
       {!errorMessage && muscleGroups.length === 0 ? (
-        <div className="rounded-2xl border border-white/15 bg-[#17385a] p-6 text-white/80 shadow-sm">
-          No hay grupos musculares disponibles.
-        </div>
+        <Card>
+          <EmptyState
+            icon="catalogo"
+            title="No hay grupos musculares"
+            description="Crea el primer grupo muscular para empezar a cargar ejercicios."
+          />
+        </Card>
       ) : null}
 
       {!errorMessage && muscleGroups.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {muscleGroups.map((group) => {
             const groupExercises = exercises.filter((exercise) =>
               sameId(exercise.idMuscleGroup, group.id)
@@ -269,21 +293,24 @@ export default async function CatalogoEjerciciosPage() {
               return (
                 <li
                   key={exercise.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-white/15 bg-[#0f2a46] px-3 py-2 text-sm text-white/90"
+                  className="r360-card-inset flex items-center justify-between gap-3 px-3 py-2.5"
                 >
                   <div className="min-w-0">
-                    <p className="break-words font-medium">{exercise.name}</p>
-                    {routineUsageVerified && routineCount > 0 ? (
-                      <p className="mt-1 text-xs text-amber-200">
-                        Vinculado a {routineCount} rutina{routineCount === 1 ? "" : "s"}
-                      </p>
-                    ) : null}
-                    {routineUsageVerified && assignedRoutineCount > 0 ? (
-                      <p className="mt-1 text-xs text-rose-200">
-                        Presente en {assignedRoutineCount} rutina
-                        {assignedRoutineCount === 1 ? "" : "s"} asignada
-                        {assignedRoutineCount === 1 ? "" : "s"} a atletas
-                      </p>
+                    <p className="break-words text-sm font-semibold text-texto">{exercise.name}</p>
+                    {routineUsageVerified && (routineCount > 0 || assignedRoutineCount > 0) ? (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {routineCount > 0 ? (
+                          <span className="r360-badge r360-badge-aviso">
+                            {routineCount} rutina{routineCount === 1 ? "" : "s"}
+                          </span>
+                        ) : null}
+                        {assignedRoutineCount > 0 ? (
+                          <span className="r360-badge r360-badge-peligro">
+                            {assignedRoutineCount} asignada
+                            {assignedRoutineCount === 1 ? "" : "s"}
+                          </span>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
                   {canManageExercises ? (
@@ -301,19 +328,19 @@ export default async function CatalogoEjerciciosPage() {
             };
 
             return (
-              <article
-                key={group.id}
-                className="flex h-full flex-col rounded-3xl border border-white/15 bg-[#17385a] p-5 shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
-              >
+              <article key={group.id} className="r360-card flex h-full flex-col p-5">
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-lg font-semibold text-white">{group.name}</h2>
-                  <span className="rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 py-1 text-xs font-medium text-cyan-100">
-                    {groupExercises.length} ejercicios
+                  <h2 className="flex items-center gap-2 text-lg font-bold text-texto">
+                    <Icon name="catalogo" className="text-acento" />
+                    {group.name}
+                  </h2>
+                  <span className="r360-badge r360-badge-acento">
+                    {groupExercises.length} ejercicio{groupExercises.length === 1 ? "" : "s"}
                   </span>
                 </div>
 
                 {groupExercises.length === 0 ? (
-                  <p className="mt-4 text-sm text-white/75">
+                  <p className="mt-4 text-sm text-texto-2">
                     Este grupo muscular todavia no tiene ejercicios cargados.
                   </p>
                 ) : (
@@ -321,11 +348,13 @@ export default async function CatalogoEjerciciosPage() {
                     <ul className="space-y-2">{visibleExercises.map(renderExerciseRow)}</ul>
                     {hiddenExercises.length > 0 ? (
                       <details className="group/more flex flex-col gap-2">
-                        <summary className="order-2 cursor-pointer select-none rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20">
-                          <span className="group-open/more:hidden">
-                            Ver mas ({hiddenExercises.length})
+                        <summary className="order-2 cursor-pointer select-none list-none">
+                          <span className="r360-btn r360-btn-ghost r360-btn-sm w-full">
+                            <span className="group-open/more:hidden">
+                              Ver mas ({hiddenExercises.length})
+                            </span>
+                            <span className="hidden group-open/more:inline">Ver menos</span>
                           </span>
-                          <span className="hidden group-open/more:inline">Ver menos</span>
                         </summary>
                         <ul className="order-1 space-y-2">
                           {hiddenExercises.map(renderExerciseRow)}
@@ -339,7 +368,6 @@ export default async function CatalogoEjerciciosPage() {
                   <CatalogCreateForm
                     action={createExercise}
                     className="mt-auto pt-4"
-                    inputClassName="bg-[#0f2a46]"
                     hiddenFields={{ idMuscleGroup: group.id }}
                     placeholder="Nuevo ejercicio para este grupo"
                     submitLabel="Agregar"

@@ -2,6 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import CoachCreateRoutineButton from "@/components/roles/CoachCreateRoutineButton";
 import RoutineDeleteButton from "@/components/roles/RoutineDeleteButton";
+import Icon from "@/components/ui/Icon";
+import PageHeader from "@/components/ui/PageHeader";
+import { Card, SectionCard } from "@/components/ui/Card";
+import { Alert, EmptyState, StatCard } from "@/components/ui/Feedback";
 import { getAssignmentsStrict, getRoutinesStrict, getUsersStrict } from "@/lib/backend";
 import { getUserRoleName, isAdminOrGymRoleName, resolveGymOwnerId, sameId } from "@/lib/roles";
 import {
@@ -203,48 +207,43 @@ export default async function RutinasCreadasPage() {
   const displayGroups = getDisplayGroups(viewer.roleKey);
 
   return (
-    <section className="space-y-6">
-      <header className="rounded-3xl border border-white/15 bg-[#0f2a46] p-8 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-white">Rutinas creadas</h1>
-            <p className="mt-3 text-white/80">
-              Listado de rutinas visibles segun tu perfil, coach propietario y asignaciones.
-            </p>
-          </div>
-          {viewer.roleKey === "coach" || viewer.roleKey === "admin" ? (
+    <section className="space-y-5">
+      <PageHeader
+        eyebrow="Rutinas"
+        title="Rutinas creadas"
+        description="Rutinas visibles segun tu perfil, agrupadas por quien las creo."
+        breadcrumbs={[{ href: "/inicio", label: "Panel" }, { label: "Rutinas creadas" }]}
+        actions={
+          viewer.roleKey === "coach" || viewer.roleKey === "admin" ? (
             <CoachCreateRoutineButton coachId={viewer.id} />
-          ) : null}
-        </div>
-      </header>
+          ) : null
+        }
+      />
 
-      {errorMessage ? (
-        <div className="rounded-2xl border border-red-300/40 bg-red-950/40 p-4 text-red-200">
-          {errorMessage}
-        </div>
-      ) : null}
+      {errorMessage ? <Alert title="No se pudieron cargar las rutinas">{errorMessage}</Alert> : null}
 
       {!errorMessage ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <article className="rounded-2xl border border-white/15 bg-[#17385a] p-5 shadow-sm">
-            <p className="text-sm font-medium text-white/70">Rutinas creadas</p>
-            <p className="mt-2 text-3xl font-semibold text-white">{rows.length}</p>
-          </article>
-          <article className="rounded-2xl border border-white/15 bg-[#17385a] p-5 shadow-sm">
-            <p className="text-sm font-medium text-white/70">Rutinas asignadas</p>
-            <p className="mt-2 text-3xl font-semibold text-white">{assignedRoutinesCount}</p>
-          </article>
-          <article className="rounded-2xl border border-white/15 bg-[#17385a] p-5 shadow-sm">
-            <p className="text-sm font-medium text-white/70">Usuarios asignados</p>
-            <p className="mt-2 text-3xl font-semibold text-white">{totalAssignments}</p>
-          </article>
+          <StatCard label="Rutinas creadas" value={rows.length} icon="rutinas" />
+          <StatCard
+            label="Rutinas asignadas"
+            value={assignedRoutinesCount}
+            hint="con al menos un atleta"
+            icon="check"
+            tone="exito"
+          />
+          <StatCard label="Usuarios asignados" value={totalAssignments} icon="usuarios" />
         </div>
       ) : null}
 
       {!errorMessage && rows.length === 0 ? (
-        <div className="rounded-2xl border border-white/15 bg-[#17385a] p-6 text-white/80 shadow-sm">
-          No hay rutinas visibles para tu perfil.
-        </div>
+        <Card>
+          <EmptyState
+            icon="rutinas"
+            title="No hay rutinas visibles para tu perfil"
+            description="Crea una rutina o pedile a tu gimnasio que comparta las suyas."
+          />
+        </Card>
       ) : null}
 
       {!errorMessage && rows.length > 0 ? (
@@ -257,89 +256,97 @@ export default async function RutinasCreadasPage() {
             }
 
             return (
-              <section
+              <SectionCard
                 key={group.key}
-                className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
+                title={group.label}
+                icon={<Icon name="rutinas" className="text-acento" />}
+                actions={<span className="r360-badge r360-badge-neutro">{groupRows.length}</span>}
               >
-                <h2 className="mb-4 text-base font-semibold text-white">
-                  {group.label} ({groupRows.length})
-                </h2>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-white/10 text-left text-sm">
-                    <thead>
-                      <tr className="text-xs uppercase tracking-wide text-white/60">
-                        <th className="px-3 py-3 font-semibold">Rutina</th>
-                        <th className="px-3 py-3 font-semibold">Creador</th>
-                        <th className="px-3 py-3 font-semibold">Usuarios asignados</th>
-                        <th className="px-3 py-3 font-semibold">Ejercicios</th>
-                        <th className="px-3 py-3 font-semibold">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/10 text-white/85">
-                      {groupRows.map((row) => {
-                        const routine = row.routine;
-                        const creatorRoleId = row.creator?.idRole || row.creator?.Rol?.id;
+                {/*
+                  Antes esto era una tabla de cinco columnas que en mobile solo se
+                  podia leer scrolleando de costado. Como fila-tarjeta entra en
+                  cualquier ancho sin perder ningun dato.
+                */}
+                <ul className="space-y-3">
+                  {groupRows.map((row) => {
+                    const routine = row.routine;
+                    const creatorRoleId = row.creator?.idRole || row.creator?.Rol?.id;
+                    const detailHref =
+                      routine?.id && row.creator?.id && creatorRoleId
+                        ? `/inicio/roles-usuarios/${creatorRoleId}/${row.creator.id}/rutinas/${routine.id}`
+                        : "";
 
-                        return (
-                          <tr key={`${group.key}-${routine.id}`} className="align-top">
-                            <td className="px-3 py-4">
-                              <p className="font-semibold text-white">
-                                {routine?.name || `Rutina #${routine.id}`}
-                              </p>
-                              <p className="mt-1 text-xs text-white/60">ID {routine.id}</p>
-                              <p className="mt-1 text-xs text-white/60">
-                                Orden {routine?.order || "-"} - {routine?.time || "-"} min
-                              </p>
-                            </td>
-                            <td className="px-3 py-4">
-                              <p className="font-medium text-white">{row.creatorLabel}</p>
-                              <p className="mt-1 text-xs text-white/60">
-                                {row.creator?.email || `ID ${row.ownerId || "-"}`}
-                              </p>
-                            </td>
-                            <td className="px-3 py-4">
-                              <span className="inline-flex rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100">
-                                {row.assignedCount} usuario{row.assignedCount === 1 ? "" : "s"}
-                              </span>
-                              {row.athleteNames.length > 0 ? (
-                                <p className="mt-2 max-w-xs text-xs text-white/65">
-                                  {row.athleteNames.slice(0, 3).join(", ")}
-                                  {row.athleteNames.length > 3
-                                    ? ` y ${row.athleteNames.length - 3} mas`
-                                    : ""}
-                                </p>
-                              ) : null}
-                            </td>
-                            <td className="px-3 py-4">{row.exerciseCount}</td>
-                            <td className="px-3 py-4">
-                              <div className="flex flex-wrap items-start gap-2">
-                                {routine?.id && row.creator?.id && creatorRoleId ? (
-                                  <Link
-                                    href={`/inicio/roles-usuarios/${creatorRoleId}/${row.creator.id}/rutinas/${routine.id}`}
-                                    className="inline-block rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
-                                  >
-                                    Ver rutina
-                                  </Link>
-                                ) : (
-                                  <span className="text-xs text-white/60">Sin enlace</span>
-                                )}
-                                {row.canManage ? (
-                                  <RoutineDeleteButton
-                                    routineId={routine.id}
-                                    routineName={routine?.name || `Rutina #${routine.id}`}
-                                    assignedCount={row.assignedCount}
-                                    athleteNames={row.athleteNames}
-                                  />
-                                ) : null}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
+                    return (
+                      <li
+                        key={`${group.key}-${routine.id}`}
+                        className="r360-card-inset flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-texto">
+                            {routine?.name || `Rutina #${routine.id}`}
+                          </p>
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <span className="r360-badge r360-badge-neutro">ID {routine.id}</span>
+                            <span className="r360-badge r360-badge-neutro">
+                              Orden {routine?.order || "-"}
+                            </span>
+                            <span className="r360-badge r360-badge-neutro">
+                              {routine?.time || "-"} min
+                            </span>
+                            <span className="r360-badge r360-badge-neutro">
+                              {row.exerciseCount} ejercicio{row.exerciseCount === 1 ? "" : "s"}
+                            </span>
+                          </div>
+                          <p className="mt-2 flex items-center gap-1.5 text-xs text-texto-2">
+                            <Icon name="perfil" className="text-texto-3" />
+                            {row.creatorLabel}
+                            <span className="text-texto-3">
+                              · {row.creator?.email || `ID ${row.ownerId || "-"}`}
+                            </span>
+                          </p>
+                        </div>
+
+                        <div className="lg:w-56">
+                          <span
+                            className={`r360-badge ${
+                              row.assignedCount > 0 ? "r360-badge-exito" : "r360-badge-neutro"
+                            }`}
+                          >
+                            {row.assignedCount} usuario{row.assignedCount === 1 ? "" : "s"}
+                          </span>
+                          {row.athleteNames.length > 0 ? (
+                            <p className="mt-1.5 text-xs text-texto-3">
+                              {row.athleteNames.slice(0, 3).join(", ")}
+                              {row.athleteNames.length > 3
+                                ? ` y ${row.athleteNames.length - 3} mas`
+                                : ""}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          {detailHref ? (
+                            <Link href={detailHref} className="r360-btn r360-btn-accent r360-btn-sm">
+                              Ver rutina
+                              <Icon name="chevron" />
+                            </Link>
+                          ) : (
+                            <span className="text-xs text-texto-3">Sin enlace</span>
+                          )}
+                          {row.canManage ? (
+                            <RoutineDeleteButton
+                              routineId={routine.id}
+                              routineName={routine?.name || `Rutina #${routine.id}`}
+                              assignedCount={row.assignedCount}
+                              athleteNames={row.athleteNames}
+                            />
+                          ) : null}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </SectionCard>
             );
           })}
         </div>

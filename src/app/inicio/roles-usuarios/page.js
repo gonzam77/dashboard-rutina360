@@ -1,5 +1,9 @@
 import Link from "next/link";
 import RoleCreateForm from "@/components/roles/RoleCreateForm";
+import Icon from "@/components/ui/Icon";
+import PageHeader from "@/components/ui/PageHeader";
+import { Card } from "@/components/ui/Card";
+import { Alert, EmptyState } from "@/components/ui/Feedback";
 import { getRolesStrict, getUsersStrict } from "@/lib/backend";
 import { getUserRoleName, isAthleteRoleName, isCoachRoleName, sameId } from "@/lib/roles";
 import { getViewer, getViewerGymOwnerId, isSuperAdmin } from "@/lib/viewer";
@@ -109,15 +113,17 @@ function countUsersInSubtree(roleId, usersByRoleId, childrenByParent, visitedIds
   );
 }
 
-function getLevelAccent(level) {
-  const accents = [
-    "from-cyan-400 to-sky-500",
-    "from-cyan-500 to-blue-500",
-    "from-sky-400 to-cyan-500",
-    "from-cyan-300 to-sky-400",
-  ];
+/** Icono segun el tipo de rol, para reconocerlo de un vistazo en el arbol. */
+function getRoleIcon(roleName) {
+  if (isAthleteRoleName(roleName)) {
+    return "perfil";
+  }
 
-  return accents[level % accents.length];
+  if (isCoachRoleName(roleName)) {
+    return "usuarios";
+  }
+
+  return "gym";
 }
 
 function groupUsersByRoleId(users) {
@@ -163,7 +169,6 @@ function RoleNode({
   const users = usersByRoleId.get(roleId) || [];
   const children = childrenByParent.get(roleId) || [];
   const totalInSubtree = countUsersInSubtree(roleId, usersByRoleId, childrenByParent);
-  const accent = getLevelAccent(level);
   const isAthleteRole = isAthleteRoleName(role?.name);
   const visibleUsers = isAthleteRole ? users.slice(0, 10) : users;
   const hiddenUsers = isAthleteRole ? users.slice(10) : [];
@@ -173,31 +178,45 @@ function RoleNode({
       <Link
         key={user.id}
         href={`/inicio/roles-usuarios/${role.id}/${user.id}`}
-        className="rounded-lg border border-white/15 bg-[#0f2a46] px-3 py-2 text-sm text-white/85 transition hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-[#153452] hover:shadow-sm"
+        className="r360-card-inset r360-card-link flex items-center gap-3 px-3 py-2.5"
       >
-        <span className="font-medium text-white">{user.username || `Usuario #${user.id}`}</span>
-        <span className="ml-2 text-xs text-white/65">{user.email || "Sin email"}</span>
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-acento/35 bg-acento/10 text-sm font-bold text-acento">
+          {String(user.username || "?").charAt(0).toUpperCase()}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-texto">
+            {user.username || `Usuario #${user.id}`}
+          </span>
+          <span className="block truncate text-xs text-texto-3">{user.email || "Sin email"}</span>
+        </span>
+        <Icon name="chevron" className="text-texto-3" />
       </Link>
     );
   }
 
   return (
-    <article className="group relative overflow-hidden rounded-3xl border border-white/15 bg-[#17385a] p-5 shadow-[0_8px_24px_rgba(0,0,0,0.28)] transition duration-300 hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-[#1b426a] hover:shadow-lg">
-      <div className={`absolute left-0 top-0 h-1 w-full bg-gradient-to-r ${accent}`} />
-
+    <article className="r360-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-white/60">Rol #{role.id}</p>
-          <h3 className="mt-1 text-lg font-semibold text-white">{role.name}</h3>
-          <p className="mt-1 text-xs text-white/70">
-            Nivel {level + 1} | Usuarios directos: {users.length} | Usuarios en rama: {totalInSubtree}
-          </p>
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-acento/12 text-xl text-acento">
+            <Icon name={getRoleIcon(role?.name)} />
+          </span>
+          <div className="min-w-0">
+            <h3 className="truncate text-lg font-bold text-texto">{role.name}</h3>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className="r360-badge r360-badge-neutro">Nivel {level + 1}</span>
+              <span className="r360-badge r360-badge-acento">
+                {users.length} directo{users.length === 1 ? "" : "s"}
+              </span>
+              {totalInSubtree !== users.length ? (
+                <span className="r360-badge r360-badge-neutro">{totalInSubtree} en la rama</span>
+              ) : null}
+            </div>
+          </div>
         </div>
-        <Link
-          href={`/inicio/roles-usuarios/${role.id}`}
-          className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20 hover:shadow-sm"
-        >
+        <Link href={`/inicio/roles-usuarios/${role.id}`} className="r360-btn r360-btn-accent r360-btn-sm">
           Gestionar
+          <Icon name="chevron" />
         </Link>
       </div>
 
@@ -208,9 +227,11 @@ function RoleNode({
           </div>
           {hiddenUsers.length > 0 ? (
             <details className="group/more flex flex-col gap-2">
-              <summary className="order-2 cursor-pointer select-none rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20">
-                <span className="group-open/more:hidden">Ver mas ({hiddenUsers.length})</span>
-                <span className="hidden group-open/more:inline">Ver menos</span>
+              <summary className="order-2 cursor-pointer select-none list-none">
+                <span className="r360-btn r360-btn-ghost r360-btn-sm w-full">
+                  <span className="group-open/more:hidden">Ver mas ({hiddenUsers.length})</span>
+                  <span className="hidden group-open/more:inline">Ver menos</span>
+                </span>
               </summary>
               <div className="order-1 grid grid-cols-1 gap-2 md:grid-cols-2">
                 {hiddenUsers.map((user) => renderUserCard(user))}
@@ -221,7 +242,7 @@ function RoleNode({
       ) : null}
 
       {children.length > 0 ? (
-        <div className="mt-4 space-y-3 border-l-2 border-white/15 pl-3">
+        <div className="mt-4 space-y-3 border-l-2 border-linea-suave pl-3">
           {children.map((child) => (
             <RoleNode
               key={child.id}
@@ -289,31 +310,31 @@ export default async function RolesUsuariosPage() {
   }
 
   return (
-    <section className="space-y-6">
-      <header className="relative overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-[#0f2a46] via-[#123355] to-[#17385a] p-8 text-white shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
-        <div className="absolute -right-14 -top-14 h-44 w-44 rounded-full bg-cyan-400/20 blur-2xl" />
-        <div className="absolute -bottom-10 left-8 h-32 w-32 rounded-full bg-sky-400/20 blur-2xl" />
-        <div className="relative">
-          <p className="text-xs uppercase tracking-[0.2em] text-white/65">Estructura organizacional</p>
-          <h1 className="mt-2 text-3xl font-semibold text-white">Roles y usuarios</h1>
-          <p className="mt-3 max-w-2xl text-white/80">
-            Vista jerárquica de roles padre/hijo y usuarios asociados.
-          </p>
-        </div>
-      </header>
+    <section className="space-y-5">
+      <PageHeader
+        eyebrow="Estructura organizacional"
+        title="Roles y usuarios"
+        description="Jerarquia de roles padre/hijo. Entra a un rol para buscar, filtrar y dar de alta usuarios."
+        breadcrumbs={[
+          { href: "/inicio", label: "Panel" },
+          { label: "Roles y usuarios" },
+        ]}
+      />
 
       {canCreateRoles ? <RoleCreateForm roles={allRoles} /> : null}
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-red-300/40 bg-red-950/40 p-4 text-red-200">
-          {errorMessage}
-        </div>
+        <Alert title="No se pudo cargar la estructura">{errorMessage}</Alert>
       ) : null}
 
       {!errorMessage && roots.length === 0 ? (
-        <div className="rounded-2xl border border-white/15 bg-[#17385a] p-6 text-white/80 shadow-sm">
-          No hay roles disponibles para tu perfil.
-        </div>
+        <Card>
+          <EmptyState
+            icon="usuarios"
+            title="No hay roles disponibles para tu perfil"
+            description="Tu rol no alcanza ninguna rama de la estructura. Si esperabas ver algo aca, consulta con tu administrador."
+          />
+        </Card>
       ) : null}
 
       {!errorMessage && roots.length > 0 ? (
@@ -332,20 +353,24 @@ export default async function RolesUsuariosPage() {
       ) : null}
 
       {!errorMessage && !showInlineUsers && roleKey === "coach" && viewerRoleId && viewerUserId ? (
-        <section className="rounded-3xl border border-white/15 bg-[#17385a] p-5 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-          <h2 className="text-base font-semibold text-white">Listados especializados</h2>
-          <p className="mt-1 text-sm text-white/75">
+        <Card>
+          <h2 className="flex items-center gap-2 text-base font-bold text-texto">
+            <Icon name="info" className="text-acento" />
+            Listados especializados
+          </h2>
+          <p className="mt-1 text-sm text-texto-2">
             Para mantener esta vista liviana, los usuarios se gestionan desde modulos dedicados.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
               href={`/inicio/roles-usuarios/${viewerRoleId}/${viewerUserId}`}
-              className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
+              className="r360-btn r360-btn-accent r360-btn-sm"
             >
+              <Icon name="perfil" />
               Ir a mi perfil de coach
             </Link>
           </div>
-        </section>
+        </Card>
       ) : null}
     </section>
   );

@@ -29,7 +29,7 @@ export default async function InicioLayout({ children }) {
   const ownRoleId = viewer.roleId || Number(sessionUser?.idRole) || null;
 
   return (
-    <div className="min-h-screen bg-[var(--azul-profundo)] lg:flex">
+    <div className="min-h-screen bg-fondo lg:flex">
       <SideMenu
         username={username}
         role={role}
@@ -39,7 +39,10 @@ export default async function InicioLayout({ children }) {
         ownUserId={viewer.id}
         athleteRoleId={athleteRoleId}
       />
-      <main className="flex-1 bg-[radial-gradient(circle_at_top_right,rgba(68,213,255,0.08),transparent_45%),var(--azul-profundo)] p-6 lg:p-8">
+      <main
+        id="contenido"
+        className="min-w-0 flex-1 bg-[radial-gradient(circle_at_top_right,rgba(0,224,255,0.06),transparent_45%)] p-4 sm:p-6 lg:p-8"
+      >
         {children}
       </main>
     </div>

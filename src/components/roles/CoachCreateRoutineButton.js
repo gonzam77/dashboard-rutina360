@@ -12,7 +12,7 @@ export default function CoachCreateRoutineButton({ coachId }) {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
+        className="r360-btn r360-btn-accent"
       >
         Crear rutina
       </button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
+import Icon from "@/components/ui/Icon";
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -89,7 +90,7 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#071a2f]/70 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-fondo/80 p-4"
       onClick={() => {
         if (!closeDisabled) {
           onClose?.();
@@ -104,16 +105,16 @@ export default function Modal({
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
-        className={`max-h-[90vh] w-full ${maxWidth} overflow-y-auto rounded-2xl border border-white/15 bg-[#0f2a46] p-6 shadow-xl outline-none`}
+        className={`max-h-[90vh] w-full ${maxWidth} overflow-y-auto rounded-xl border border-linea bg-superficie-alta p-6 shadow-flotante outline-none`}
       >
         {title ? (
-          <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="mb-5 flex items-start justify-between gap-3 border-b border-linea-suave pb-4">
             <div>
-              <h3 id={titleId} className="text-lg font-semibold text-white">
+              <h3 id={titleId} className="text-lg font-semibold text-texto">
                 {title}
               </h3>
               {description ? (
-                <p id={descriptionId} className="mt-1 text-sm text-white/75">
+                <p id={descriptionId} className="mt-1 text-sm text-texto-2">
                   {description}
                 </p>
               ) : null}
@@ -122,9 +123,10 @@ export default function Modal({
               type="button"
               onClick={onClose}
               disabled={closeDisabled}
-              className="rounded-lg border border-white/20 px-3 py-1.5 text-sm font-medium text-white/85 transition hover:bg-white/10 disabled:opacity-60"
+              aria-label="Cerrar"
+              className="r360-btn r360-btn-ghost r360-btn-sm min-h-0 h-9 w-9 p-0"
             >
-              Cerrar
+              <Icon name="cerrar" />
             </button>
           </div>
         ) : null}

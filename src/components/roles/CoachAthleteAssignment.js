@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Icon from "@/components/ui/Icon";
+import { Alert } from "@/components/ui/Feedback";
 import Modal from "@/components/ui/Modal";
 
 const WEEKLY_AVAILABILITY_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map(
@@ -165,12 +167,12 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
   }
 
   const inputClassName =
-    "rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55";
+    "r360-input placeholder:text-texto-3";
 
   return (
     <div className="mt-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-white/75">Administra los atletas vinculados a este coach.</p>
+        <p className="text-sm text-texto-2">Administra los atletas vinculados a este coach.</p>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -180,8 +182,9 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
               setAthleteSearch("");
               setIsAssignModalOpen(true);
             }}
-            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
+            className="r360-btn r360-btn-accent"
           >
+            <Icon name="usuarios" />
             Asignar atleta
           </button>
           <button
@@ -191,16 +194,21 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
               setMessage("");
               setIsCreateModalOpen(true);
             }}
-            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
+            className="r360-btn r360-btn-primary"
           >
+            <Icon name="mas" />
             Crear atleta
           </button>
         </div>
       </div>
 
-      {message ? <p className="mt-3 text-sm text-cyan-100">{message}</p> : null}
+      {message ? (
+        <Alert tone="exito" className="mt-4">
+          {message}
+        </Alert>
+      ) : null}
       {error && !isAssignModalOpen && !isCreateModalOpen ? (
-        <p className="mt-3 text-sm text-rose-200">{error}</p>
+        <Alert className="mt-4">{error}</Alert>
       ) : null}
 
       <Modal
@@ -216,27 +224,27 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
         description="Solo se listan atletas del mismo gimnasio que el coach."
       >
         {athletes.length === 0 ? (
-          <p className="text-sm text-white/75">No hay atletas disponibles para asignar.</p>
+          <p className="text-sm text-texto-2">No hay atletas disponibles para asignar.</p>
         ) : (
           <form className="space-y-3" onSubmit={handleAssign}>
-            <label className="block text-sm text-white/85">
-              Buscar atleta
+            <label className="block">
+              <span className="r360-label">Buscar atleta</span>
               <input
                 type="search"
                 value={athleteSearch}
                 onChange={(event) => setAthleteSearch(event.target.value)}
                 placeholder="Buscar por nombre, email o ID"
-                className={`mt-1 w-full ${inputClassName}`}
+                className={inputClassName}
               />
             </label>
 
-            <label className="block text-sm text-white/85">
-              Atleta
+            <label className="block">
+              <span className="r360-label">Atleta</span>
               <select
                 required
                 value={selectedAthleteId}
                 onChange={(event) => setSelectedAthleteId(event.target.value)}
-                className={`mt-1 w-full ${inputClassName}`}
+                className={inputClassName}
               >
                 <option value="" disabled>
                   Seleccionar atleta
@@ -250,15 +258,15 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
             </label>
 
             {filteredAthletes.length === 0 ? (
-              <p className="text-sm text-amber-100">No se encontraron atletas con esa busqueda.</p>
+              <p className="text-sm text-texto-3">No se encontraron atletas con esa busqueda.</p>
             ) : null}
 
-            {error ? <p className="text-sm text-rose-200">{error}</p> : null}
+            {error ? <Alert>{error}</Alert> : null}
 
             <button
               type="submit"
               disabled={loading}
-              className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60"
+              className="r360-btn r360-btn-accent"
             >
               {loading ? "Asignando..." : "Confirmar asignacion"}
             </button>
@@ -374,12 +382,12 @@ export default function CoachAthleteAssignment({ coachId, athletes, athleteRoleI
             ))}
           </select>
 
-          {error ? <p className="text-sm text-rose-200">{error}</p> : null}
+          {error ? <Alert>{error}</Alert> : null}
 
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60"
+            className="r360-btn r360-btn-accent"
           >
             {loading ? "Creando..." : "Crear y asignar atleta"}
           </button>

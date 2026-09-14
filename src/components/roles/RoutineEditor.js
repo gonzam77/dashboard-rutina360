@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Alert } from "@/components/ui/Feedback";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { extractArrayPayload } from "@/lib/api-response";
 import { getRoutineExerciseId, getRoutineExercises } from "@/lib/routines";
@@ -10,10 +11,10 @@ const MUSCLE_GROUPS_URL = "/api/muscle-groups";
 const EXERCISES_URL = "/api/exercises";
 
 const INPUT_CLASS =
-  "rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55 disabled:opacity-60";
+  "r360-input placeholder:text-texto-3";
 const SELECT_CLASS =
-  "rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white disabled:bg-[#0b223a] disabled:text-white/45";
-const OPTION_CLASS = "bg-[#0f2a46] text-white";
+  "r360-input disabled:bg-[#0b223a] disabled:text-texto/45";
+const OPTION_CLASS = "bg-superficie-alta text-texto";
 
 function createInitialExerciseRows(routine) {
   return getRoutineExercises(routine).map((item, index) => {
@@ -262,10 +263,10 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
   return (
     <section
       className={
-        isInModal ? "" : "rounded-2xl border border-white/15 bg-[#0f2a46] p-6 shadow-sm"
+        isInModal ? "" : "rounded-2xl border border-linea bg-superficie-alta p-6 shadow-sm"
       }
     >
-      {!isInModal ? <h2 className="text-lg font-semibold text-white">Editar rutina</h2> : null}
+      {!isInModal ? <h2 className="text-lg font-semibold text-texto">Editar rutina</h2> : null}
       <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
         <div className="grid gap-3 md:grid-cols-2">
           <input
@@ -298,25 +299,25 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
 
         <div>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-medium text-white/85">Ejercicios de la rutina</p>
+            <p className="text-sm font-medium text-texto-2">Ejercicios de la rutina</p>
             <button
               type="button"
               onClick={addExerciseRow}
               disabled={loadingCatalogs}
-              className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-300/20 disabled:opacity-60"
+              className="r360-btn r360-btn-accent r360-btn-sm"
             >
               Agregar ejercicio
             </button>
           </div>
 
           {loadingCatalogs ? (
-            <p className="rounded-lg border border-white/15 bg-[#17385a] px-3 py-2 text-sm text-white/70">
+            <p className="r360-input-2">
               Cargando catalogo de ejercicios...
             </p>
           ) : null}
 
           {!loadingCatalogs && exerciseRows.length === 0 ? (
-            <p className="rounded-lg border border-white/15 bg-[#17385a] px-3 py-2 text-sm text-white/70">
+            <p className="r360-input-2">
               La rutina quedara sin ejercicios.
             </p>
           ) : null}
@@ -333,15 +334,15 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
                 !availableExercises.some((exercise) => String(exercise.id) === String(row.idEjercice));
 
               return (
-                <article key={row.rowKey} className="rounded-xl border border-white/15 bg-[#0f2a46] p-3">
+                <article key={row.rowKey} className="rounded-xl border border-linea bg-superficie-alta p-3">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs font-medium uppercase tracking-wide text-white/60">
+                    <p className="text-xs font-medium uppercase tracking-wide text-texto-3">
                       Ejercicio #{index + 1}
                     </p>
                     <button
                       type="button"
                       onClick={() => removeExerciseRow(row.rowKey)}
-                      className="rounded-lg border border-rose-300/45 bg-rose-900/25 px-2 py-1 text-xs font-medium text-rose-100 transition hover:bg-rose-900/35"
+                      className="r360-btn r360-btn-danger r360-btn-sm min-h-0 py-1"
                     >
                       Quitar
                     </button>
@@ -426,14 +427,14 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
           </div>
         </div>
 
-        {message ? <p className="text-sm text-cyan-100">{message}</p> : null}
-        {error ? <p className="text-sm text-rose-200">{error}</p> : null}
+        {message ? <Alert tone="exito">{message}</Alert> : null}
+        {error ? <Alert>{error}</Alert> : null}
 
         <div className="flex flex-wrap justify-end gap-2">
           <button
             type="submit"
             disabled={saving || loadingCatalogs}
-            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20 disabled:opacity-60"
+            className="r360-btn r360-btn-accent"
           >
             {saving ? "Guardando..." : "Guardar cambios"}
           </button>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Alert } from "@/components/ui/Feedback";
 import { extractArrayPayload } from "@/lib/api-response";
 
 const MUSCLE_GROUPS_URL = "/api/muscle-groups";
@@ -191,8 +192,8 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
   }
 
   return (
-    <section className={isInModal ? "" : "rounded-2xl border border-white/15 bg-[#0f2a46] p-6 shadow-sm"}>
-      {!isInModal ? <h2 className="text-lg font-semibold text-white">Crear rutina para este coach</h2> : null}
+    <section className={isInModal ? "" : "rounded-2xl border border-linea bg-superficie-alta p-6 shadow-sm"}>
+      {!isInModal ? <h2 className="text-lg font-semibold text-texto">Crear rutina para este coach</h2> : null}
       <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={handleSubmit}>
         <input
           required
@@ -200,7 +201,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
           placeholder="Nombre de la rutina"
           value={routineName}
           onChange={(event) => setRoutineName(event.target.value)}
-          className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55 md:col-span-2"
+          className="r360-input placeholder:text-texto-3 md:col-span-2"
         />
         <input
           required
@@ -209,7 +210,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
           placeholder="Orden"
           value={routineOrder}
           onChange={(event) => setRoutineOrder(event.target.value)}
-          className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55"
+          className="r360-input placeholder:text-texto-3"
         />
         <input
           required
@@ -218,13 +219,13 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
           placeholder="Tiempo (minutos)"
           value={routineTime}
           onChange={(event) => setRoutineTime(event.target.value)}
-          className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55"
+          className="r360-input placeholder:text-texto-3"
         />
         <div className="md:col-span-2">
-          <p className="mb-2 text-sm font-medium text-white/85">Agregar ejercicios (uno por uno)</p>
-          <div className="flex flex-col rounded-lg border border-white/15 bg-[#17385a] p-3">
+          <p className="mb-2 text-sm font-medium text-texto-2">Agregar ejercicios (uno por uno)</p>
+          <div className="flex flex-col rounded-lg border border-linea bg-superficie p-3">
             {loadingCatalogs ? (
-              <p className="mb-3 rounded-lg border border-white/15 bg-[#0f2a46] px-3 py-2 text-sm text-white/70">
+              <p className="mb-3 r360-card-inset px-3 py-2 text-sm text-texto-2">
                 Cargando grupos musculares y ejercicios...
               </p>
             ) : null}
@@ -233,13 +234,13 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
                 value={draftExercise.muscleGroupId}
                 onChange={(event) => updateDraftExercise("muscleGroupId", event.target.value)}
                 disabled={loadingCatalogs || muscleGroups.length === 0}
-                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white disabled:bg-[#0b223a] disabled:text-white/45"
+                className="r360-input disabled:bg-[#0b223a] disabled:text-texto/45"
               >
-                <option value="" disabled className="bg-[#0f2a46] text-white">
+                <option value="" disabled className="bg-superficie-alta text-texto">
                   {muscleGroups.length > 0 ? "Seleccionar grupo muscular" : "No hay grupos musculares disponibles"}
                 </option>
                 {muscleGroups.map((group) => (
-                  <option key={group.id} value={group.id} className="bg-[#0f2a46] text-white">
+                  <option key={group.id} value={group.id} className="bg-superficie-alta text-texto">
                     {group.name}
                   </option>
                 ))}
@@ -249,13 +250,13 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
                 value={draftExercise.idEjercice}
                 onChange={(event) => updateDraftExercise("idEjercice", event.target.value)}
                 disabled={loadingCatalogs || !draftExercise.muscleGroupId}
-                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white disabled:bg-[#0b223a] disabled:text-white/45"
+                className="r360-input disabled:bg-[#0b223a] disabled:text-texto/45"
               >
-                <option value="" disabled className="bg-[#0f2a46] text-white">
+                <option value="" disabled className="bg-superficie-alta text-texto">
                   {draftExercise.muscleGroupId ? "Seleccionar ejercicio" : "Primero selecciona grupo muscular"}
                 </option>
                 {(exercisesByGroup.get(String(draftExercise.muscleGroupId)) || []).map((exercise) => (
-                  <option key={exercise.id} value={exercise.id} className="bg-[#0f2a46] text-white">
+                  <option key={exercise.id} value={exercise.id} className="bg-superficie-alta text-texto">
                     {exercise.name}
                   </option>
                 ))}
@@ -267,7 +268,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
                 placeholder="Cantidad de series"
                 value={draftExercise.series}
                 onChange={(event) => updateDraftExercise("series", event.target.value)}
-                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white placeholder:text-white/55"
+                className="r360-input placeholder:text-texto-3"
               />
 
               <input
@@ -276,7 +277,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
                 placeholder="Descanso entre series (min)"
                 value={draftExercise.rest}
                 onChange={(event) => updateDraftExercise("rest", event.target.value)}
-                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white placeholder:text-white/55"
+                className="r360-input placeholder:text-texto-3"
               />
             </div>
             <div className="mt-auto space-y-3 pt-3">
@@ -285,13 +286,13 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
                 placeholder="Comentario (opcional)"
                 value={draftExercise.comments}
                 onChange={(event) => updateDraftExercise("comments", event.target.value)}
-                className="w-full rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white placeholder:text-white/55"
+                className="w-full r360-input placeholder:text-texto-3"
               />
               <button
                 type="button"
                 onClick={addConfirmedExercise}
                 disabled={loadingCatalogs}
-                className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-medium text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60"
+                className="r360-btn r360-btn-accent r360-btn-sm"
               >
                 Confirmar ejercicio y agregar
               </button>
@@ -300,18 +301,18 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
 
           <div className="mt-3 space-y-2">
             {confirmedExercises.length === 0 ? (
-              <p className="text-sm text-white/70">Todavia no hay ejercicios confirmados.</p>
+              <p className="text-sm text-texto-2">Todavia no hay ejercicios confirmados.</p>
             ) : (
               confirmedExercises.map((item, index) => (
-                <div key={`confirmed-${index}`} className="flex items-center justify-between rounded-lg border border-white/15 bg-[#17385a] px-3 py-2 text-sm">
-                  <p className="text-white/85">
+                <div key={`confirmed-${index}`} className="flex items-center justify-between r360-input">
+                  <p className="text-texto-2">
                     #{index + 1} - {exerciseNameById.get(String(item.idEjercice)) || `Ejercicio #${item.idEjercice}`}{" "}
                     - Series {item.series} - Descanso {item.rest} min
                   </p>
                   <button
                     type="button"
                     onClick={() => removeConfirmedExercise(index)}
-                    className="rounded-md border border-rose-300/45 bg-rose-900/25 px-2 py-1 text-xs font-medium text-rose-100 hover:bg-rose-900/35"
+                    className="r360-btn r360-btn-danger r360-btn-sm min-h-0 py-1"
                   >
                     Quitar
                   </button>
@@ -323,13 +324,17 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
         <button
           type="submit"
           disabled={loading || loadingCatalogs}
-          className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 font-medium text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60 md:col-span-2"
+          className="r360-btn r360-btn-primary md:col-span-2"
         >
           {loading ? "Creando rutina..." : "Crear rutina"}
         </button>
       </form>
-      {message ? <p className="mt-3 text-sm text-cyan-100">{message}</p> : null}
-      {error ? <p className="mt-3 text-sm text-rose-200">{error}</p> : null}
+      {message ? (
+        <Alert tone="exito" className="mt-4">
+          {message}
+        </Alert>
+      ) : null}
+      {error ? <Alert className="mt-4">{error}</Alert> : null}
     </section>
   );
 }

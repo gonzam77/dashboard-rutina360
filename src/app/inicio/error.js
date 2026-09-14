@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Icon from "@/components/ui/Icon";
 
 /**
  * Limite de error de /inicio. Evita que una falla al leer el backend termine en
@@ -12,28 +13,25 @@ export default function InicioError({ error, reset }) {
   }, [error]);
 
   return (
-    <section className="rounded-3xl border border-red-300/40 bg-red-950/40 p-8 text-red-100">
-      <h1 className="text-2xl font-semibold">No se pudo cargar esta seccion</h1>
-      <p className="mt-3 text-sm text-red-200/90">
-        Ocurrio un error al consultar el servidor. Podes reintentar; si el problema persiste,
-        volve a iniciar sesion.
+    <section className="r360-card p-6 sm:p-8">
+      <span className="grid h-12 w-12 place-items-center rounded-xl bg-peligro/15 text-2xl text-peligro">
+        <Icon name="alerta" />
+      </span>
+      <h1 className="mt-4 text-2xl font-extrabold text-texto">No se pudo cargar esta seccion</h1>
+      <p className="mt-2 max-w-xl text-sm text-texto-2">
+        Ocurrio un error al consultar el servidor. Podes reintentar; si el problema persiste, volve
+        a iniciar sesion.
       </p>
       {error?.digest ? (
-        <p className="mt-2 text-xs text-red-200/70">Referencia: {error.digest}</p>
+        <p className="mt-2 text-xs text-texto-3">Referencia: {error.digest}</p>
       ) : null}
 
-      <div className="mt-6 flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={reset}
-          className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
-        >
+      <div className="mt-6 flex flex-wrap gap-2">
+        <button type="button" onClick={reset} className="r360-btn r360-btn-accent">
           Reintentar
         </button>
-        <a
-          href="/inicio"
-          className="rounded-lg border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
-        >
+        <a href="/inicio" className="r360-btn r360-btn-ghost">
+          <Icon name="panel" />
           Ir al panel
         </a>
       </div>

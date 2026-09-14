@@ -1,10 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Alert } from "@/components/ui/Feedback";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -41,16 +40,28 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#071a2f] via-[#0f2a46] to-[#17385a] p-6">
-      <div className="pointer-events-none absolute -left-20 top-8 h-64 w-64 rounded-full bg-cyan-400/20 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-20 right-0 h-72 w-72 rounded-full bg-sky-400/20 blur-3xl" />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-fondo p-4 sm:p-6">
+      <div
+        className="pointer-events-none absolute -left-24 top-0 h-72 w-72 rounded-full bg-acento/10 blur-3xl"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute -bottom-24 right-0 h-80 w-80 rounded-full bg-principal/10 blur-3xl"
+        aria-hidden="true"
+      />
 
-      <section className="relative w-full max-w-md rounded-3xl border border-white/15 bg-[#17385a]/90 p-8 text-white shadow-[0_18px_45px_rgba(0,0,0,0.35)] backdrop-blur">
-        <h1 className="text-2xl text-center font-semibold text-white">Rutina 360</h1>
+      <section className="r360-card relative w-full max-w-md p-6 sm:p-8">
+        <div className="flex flex-col items-center text-center">
+          <span className="grid h-14 w-14 place-items-center rounded-xl bg-principal text-2xl font-black text-fondo">
+            R
+          </span>
+          <h1 className="mt-4 text-2xl font-extrabold text-texto">Rutina360</h1>
+          <p className="mt-1 text-sm text-texto-2">Panel administrativo</p>
+        </div>
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label className="mb-1 block text-sm font-medium text-white/85" htmlFor="email">
+            <label className="r360-label" htmlFor="email">
               Email
             </label>
             <input
@@ -61,12 +72,12 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-xl border border-white/20 bg-[#0f2a46]/90 px-3 py-2 text-white placeholder:text-white/45 outline-none transition focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-300/30"
+              className="r360-input"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-white/85" htmlFor="password">
+            <label className="r360-label" htmlFor="password">
               Contrasena
             </label>
             <input
@@ -77,20 +88,20 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-xl border border-white/20 bg-[#0f2a46]/90 px-3 py-2 text-white placeholder:text-white/45 outline-none transition focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-300/30"
+              className="r360-input"
             />
           </div>
 
-          {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+          {error ? <Alert>{error}</Alert> : null}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-xl border border-cyan-300/40 bg-cyan-300/10 px-4 py-2 font-medium text-cyan-100 transition hover:bg-cyan-300/20 disabled:cursor-not-allowed disabled:opacity-60"
-          >
+          <button type="submit" disabled={loading} className="r360-btn r360-btn-primary w-full">
             {loading ? "Ingresando..." : "Iniciar sesion"}
           </button>
         </form>
+
+        <p className="mt-6 text-center text-xs text-texto-3">
+          Si sos atleta, entra desde la app movil de Rutina360.
+        </p>
       </section>
     </main>
   );

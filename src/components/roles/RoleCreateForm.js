@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Icon from "@/components/ui/Icon";
+import { Alert } from "@/components/ui/Feedback";
 import Modal from "@/components/ui/Modal";
 
 export default function RoleCreateForm({ roles }) {
@@ -61,11 +63,14 @@ export default function RoleCreateForm({ roles }) {
 
   return (
     <>
-      <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+      <section className="r360-card p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-white">Gestión de roles</h2>
-            <p className="mt-1 text-sm text-white/75">Crea roles nuevos y define su jerarquía.</p>
+            <h2 className="flex items-center gap-2 text-lg font-bold text-texto">
+              <Icon name="panel" className="text-acento" />
+              Gestion de roles
+            </h2>
+            <p className="mt-1 text-sm text-texto-2">Crea roles nuevos y define su jerarquía.</p>
           </div>
           <button
             type="button"
@@ -74,12 +79,17 @@ export default function RoleCreateForm({ roles }) {
               setMessage("");
               setIsOpen(true);
             }}
-            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
+            className="r360-btn r360-btn-primary"
           >
+            <Icon name="mas" />
             Crear rol
           </button>
         </div>
-        {message ? <p className="mt-3 text-sm text-cyan-100">{message}</p> : null}
+        {message ? (
+          <Alert tone="exito" className="mt-4">
+            {message}
+          </Alert>
+        ) : null}
       </section>
 
       <Modal
@@ -96,14 +106,14 @@ export default function RoleCreateForm({ roles }) {
             placeholder="Nombre del rol"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white placeholder:text-white/55"
+            className="r360-input placeholder:text-texto-3"
           />
 
           <select
             value={parentId}
             aria-label="Rol padre"
             onChange={(event) => setParentId(event.target.value)}
-            className="rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white"
+            className="r360-input"
           >
             <option value="">Sin padre</option>
             {roleOptions.map((role) => (
@@ -113,12 +123,16 @@ export default function RoleCreateForm({ roles }) {
             ))}
           </select>
 
-          {error ? <p className="text-sm text-rose-200 md:col-span-2">{error}</p> : null}
+          {error ? (
+            <div className="md:col-span-2">
+              <Alert>{error}</Alert>
+            </div>
+          ) : null}
 
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60 md:col-span-2"
+            className="r360-btn r360-btn-primary md:col-span-2"
           >
             {loading ? "Creando..." : "Crear rol"}
           </button>

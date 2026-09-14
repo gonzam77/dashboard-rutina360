@@ -1,27 +1,267 @@
 @import "tailwindcss";
 
-:root {
-  --background: #071a2f;
-  --foreground: #f3f8ff;
-  --azul-profundo: #071a2f;
-  --azul-profundo-claro: #0f2a46;
-  --azul-card: #17385a;
-  --cian: #44d5ff;
-  --blanco: #f3f8ff;
-  --secundario: rgba(243, 248, 255, 0.72);
-  --borde: rgba(255, 255, 255, 0.15);
-  --hover: rgba(68, 213, 255, 0.16);
+/*
+ * Tokens de Rutina360.
+ *
+ * Son los mismos de la app mobile (gym_proyect/styles/colores.js y theme.js):
+ * el panel y la app tienen que leerse como un solo producto. Los nombres son
+ * semanticos a proposito -- dicen para que sirve el color, no como se ve -- asi
+ * un cambio de paleta no obliga a tocar cada componente.
+ */
+@theme {
+  /* --- Superficies --- */
+  --color-fondo: #080c14;
+  --color-superficie: #141f33;
+  --color-superficie-alta: #1c2942;
+  --color-sidebar: #0d1524;
+
+  /* --- Bordes --- */
+  --color-linea: rgba(255, 255, 255, 0.15);
+  --color-linea-suave: rgba(255, 255, 255, 0.08);
+
+  /* --- Texto --- */
+  --color-texto: #ccd6eb;
+  --color-texto-2: #a3adb7;
+  --color-texto-3: rgba(204, 214, 235, 0.55);
+  --color-sobre-acento: #080c14;
+
+  /* --- Estados --- */
+  --color-acento: #00e0ff;
+  --color-principal: #46ed34;
+  --color-exito: #1dbf84;
+  --color-peligro: #e5484d;
+  --color-aviso: #dd5c00;
+  --color-neutro: #3a4757;
+
+  /* --- Radios (radios de theme.js) --- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* --- Sombras (sombras de theme.js) --- */
+  --shadow-card: 0 8px 20px rgba(0, 0, 0, 0.35);
+  --shadow-flotante: 0 14px 34px rgba(0, 0, 0, 0.45);
+  --shadow-sutil: 0 3px 8px rgba(0, 0, 0, 0.25);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--color-fondo);
+  --color-foreground: var(--color-texto);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  /* El header mobile es sticky: sin esto el anchor de destino queda tapado. */
+  scroll-padding-top: 5rem;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-fondo);
+  color: var(--color-texto);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Foco visible y consistente en todo el panel, sin anillo al click con mouse. */
+:focus-visible {
+  outline: 2px solid var(--color-acento);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/*
+ * Clases de componente. Existen porque los mismos 6 patrones (tarjeta, boton,
+ * input, badge) estaban repetidos a mano en 17 archivos con valores levemente
+ * distintos, y cada pantalla terminaba viendose diferente.
+ */
+@layer components {
+  /* --- Superficies --- */
+  .r360-card {
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-linea);
+    background-color: var(--color-superficie);
+    box-shadow: var(--shadow-card);
+  }
+
+  .r360-card-inset {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-linea-suave);
+    background-color: var(--color-superficie-alta);
+  }
+
+  .r360-card-link {
+    transition:
+      transform 0.2s ease,
+      border-color 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .r360-card-link:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--color-acento) 40%, transparent);
+    box-shadow: var(--shadow-flotante);
+  }
+
+  /* --- Botones --- */
+  .r360-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    /* 44px es el area de toque minima que usa la app (toqueMinimo). */
+    min-height: 44px;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      color 0.2s ease;
+  }
+
+  .r360-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .r360-btn-primary {
+    background-color: var(--color-principal);
+    border-color: var(--color-principal);
+    color: var(--color-sobre-acento);
+  }
+
+  .r360-btn-primary:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-principal) 85%, white);
+  }
+
+  .r360-btn-accent {
+    background-color: color-mix(in srgb, var(--color-acento) 14%, transparent);
+    border-color: color-mix(in srgb, var(--color-acento) 45%, transparent);
+    color: var(--color-acento);
+  }
+
+  .r360-btn-accent:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-acento) 26%, transparent);
+  }
+
+  .r360-btn-ghost {
+    background-color: var(--color-linea-suave);
+    border-color: var(--color-linea);
+    color: var(--color-texto);
+  }
+
+  .r360-btn-ghost:hover:not(:disabled) {
+    background-color: var(--color-linea);
+  }
+
+  .r360-btn-danger {
+    background-color: color-mix(in srgb, var(--color-peligro) 18%, transparent);
+    border-color: color-mix(in srgb, var(--color-peligro) 50%, transparent);
+    color: color-mix(in srgb, var(--color-peligro) 75%, white);
+  }
+
+  .r360-btn-danger:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-peligro) 32%, transparent);
+  }
+
+  .r360-btn-sm {
+    min-height: 36px;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+
+  /* --- Campos de formulario --- */
+  .r360-input {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-linea);
+    background-color: var(--color-fondo);
+    color: var(--color-texto);
+    font-size: 0.875rem;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .r360-input::placeholder {
+    color: var(--color-texto-3);
+  }
+
+  .r360-input:focus {
+    outline: none;
+    border-color: color-mix(in srgb, var(--color-acento) 60%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-acento) 20%, transparent);
+  }
+
+  .r360-input:disabled {
+    opacity: 0.55;
+  }
+
+  /* El calendario y las flechas nativas salen negros sobre fondo oscuro. */
+  .r360-input::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.6;
+  }
+
+  .r360-label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-texto-3);
+  }
+
+  /* --- Badges --- */
+  .r360-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.625rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.25rem;
+  }
+
+  .r360-badge-acento {
+    background-color: color-mix(in srgb, var(--color-acento) 16%, transparent);
+    border-color: color-mix(in srgb, var(--color-acento) 45%, transparent);
+    color: var(--color-acento);
+  }
+
+  .r360-badge-exito {
+    background-color: color-mix(in srgb, var(--color-exito) 16%, transparent);
+    border-color: color-mix(in srgb, var(--color-exito) 45%, transparent);
+    color: color-mix(in srgb, var(--color-exito) 80%, white);
+  }
+
+  .r360-badge-aviso {
+    background-color: color-mix(in srgb, var(--color-aviso) 20%, transparent);
+    border-color: color-mix(in srgb, var(--color-aviso) 50%, transparent);
+    color: color-mix(in srgb, var(--color-aviso) 55%, white);
+  }
+
+  .r360-badge-peligro {
+    background-color: color-mix(in srgb, var(--color-peligro) 18%, transparent);
+    border-color: color-mix(in srgb, var(--color-peligro) 50%, transparent);
+    color: color-mix(in srgb, var(--color-peligro) 70%, white);
+  }
+
+  .r360-badge-neutro {
+    background-color: var(--color-linea-suave);
+    border-color: var(--color-linea);
+    color: var(--color-texto-2);
+  }
 }

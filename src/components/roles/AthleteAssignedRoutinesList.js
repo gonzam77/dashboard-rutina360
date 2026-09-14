@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Icon from "@/components/ui/Icon";
+import { Alert, EmptyState } from "@/components/ui/Feedback";
 import { getRoutineExercises } from "@/lib/routines";
 
 function formatDate(value) {
@@ -23,9 +26,14 @@ export default function AthleteAssignedRoutinesList({ roleId, athleteId, coachId
   const [loadingKey, setLoadingKey] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [removeTarget, setRemoveTarget] = useState(null);
 
-  async function handleRemoveRoutine(idRoutine) {
-    const key = `${idRoutine}-${athleteId}`;
+  async function handleRemoveRoutine() {
+    if (!removeTarget?.idRoutine) {
+      return;
+    }
+
+    const key = `${removeTarget.idRoutine}-${athleteId}`;
     setLoadingKey(key);
     setError("");
     setMessage("");
@@ -35,7 +43,7 @@ export default function AthleteAssignedRoutinesList({ roleId, athleteId, coachId
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          idRoutine: Number(idRoutine),
+          idRoutine: Number(removeTarget.idRoutine),
           idAthlete: Number(athleteId),
         }),
       });
@@ -52,17 +60,29 @@ export default function AthleteAssignedRoutinesList({ roleId, athleteId, coachId
       setError("Error de conexion al quitar la rutina.");
     } finally {
       setLoadingKey("");
+      setRemoveTarget(null);
     }
   }
 
   if (assignments.length === 0) {
-    return <p className="mt-3 text-sm text-white/75">Este atleta aun no tiene rutinas asignadas.</p>;
+    return (
+      <EmptyState
+        icon="rutinas"
+        title="Este atleta aun no tiene rutinas asignadas"
+        description="Asignale una rutina desde el bloque de arriba para que la vea en la app."
+      />
+    );
   }
 
   return (
-    <div className="mt-4">
-      {message ? <p className="mb-3 text-sm text-cyan-100">{message}</p> : null}
-      {error ? <p className="mb-3 text-sm text-rose-200">{error}</p> : null}
+    <div>
+      {message ? (
+        <Alert tone="exito" className="mb-3">
+          {message}
+        </Alert>
+      ) : null}
+      {error ? <Alert className="mb-3">{error}</Alert> : null}
+
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {assignments.map((assignment) => {
           const routine = assignment?.Routine;
@@ -70,19 +90,26 @@ export default function AthleteAssignedRoutinesList({ roleId, athleteId, coachId
           const routineExercises = getRoutineExercises(routine);
           const idRoutine = routine?.id || assignment?.idRoutine;
           const key = `${idRoutine}-${athleteId}`;
+          const routineName = routine?.name || `Rutina #${assignment?.idRoutine || "-"}`;
 
           return (
-            <article key={assignment.id ?? key} className="rounded-2xl border border-white/15 bg-[#0f2a46] p-4">
-              <p className="text-xs uppercase tracking-wide text-white/60">Asignacion #{assignment.id}</p>
-              <p className="mt-1 font-semibold text-white">
-                {routine?.name || `Rutina #${assignment?.idRoutine || "-"}`}
+            <article key={assignment.id ?? key} className="r360-card-inset flex flex-col p-4">
+              <p className="font-bold text-texto">{routineName}</p>
+
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <span className="r360-badge r360-badge-neutro">ID {idRoutine || "-"}</span>
+                <span className="r360-badge r360-badge-neutro">Orden {routine?.order || "-"}</span>
+                <span className="r360-badge r360-badge-neutro">{routine?.time || "-"} min</span>
+                <span className="r360-badge r360-badge-acento">
+                  {routineExercises.length} ejercicio{routineExercises.length === 1 ? "" : "s"}
+                </span>
+              </div>
+
+              <p className="mt-2 text-xs text-texto-3">
+                Asignada el {formatDate(assignment?.createdAt)}
               </p>
-              <p className="mt-2 text-sm text-white/80">ID rutina: {idRoutine || "-"}</p>
-              <p className="text-sm text-white/80">Orden: {routine?.order || "-"}</p>
-              <p className="text-sm text-white/80">Tiempo: {routine?.time || "-"} min</p>
-              <p className="text-sm text-white/80">Ejercicios: {routineExercises.length}</p>
-              <p className="text-sm text-white/80">Asignada: {formatDate(assignment?.createdAt)}</p>
-              <div className="mt-3 flex flex-wrap gap-2">
+
+              <div className="mt-auto flex flex-wrap gap-2 pt-3">
                 {routine?.id ? (
                   <Link
                     href={
@@ -90,16 +117,17 @@ export default function AthleteAssignedRoutinesList({ roleId, athleteId, coachId
                         ? `/inicio/roles-usuarios/${roleId}/${athleteId}/rutinas/${routine.id}?source=athlete-profile&coachId=${coachId}`
                         : `/inicio/roles-usuarios/${roleId}/${athleteId}/rutinas/${routine.id}?source=athlete-profile`
                     }
-                    className="inline-block rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
+                    className="r360-btn r360-btn-accent r360-btn-sm"
                   >
                     Ver rutina
+                    <Icon name="chevron" />
                   </Link>
                 ) : null}
                 <button
                   type="button"
-                  onClick={() => handleRemoveRoutine(idRoutine)}
+                  onClick={() => setRemoveTarget({ idRoutine, routineName })}
                   disabled={!idRoutine || loadingKey === key}
-                  className="rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-60"
+                  className="r360-btn r360-btn-danger r360-btn-sm"
                 >
                   {loadingKey === key ? "Quitando..." : "Quitar asignacion"}
                 </button>
@@ -108,6 +136,25 @@ export default function AthleteAssignedRoutinesList({ roleId, athleteId, coachId
           );
         })}
       </div>
+
+      {/*
+        Quitar una rutina saca el plan de la app del atleta sin aviso previo.
+        Era la unica accion destructiva del panel que no pedia confirmacion.
+      */}
+      <ConfirmDialog
+        open={Boolean(removeTarget)}
+        title="Quitar rutina asignada"
+        description={`Vas a quitarle "${removeTarget?.routineName}" a este atleta. Dejara de verla en la app, pero la rutina no se elimina y podes volver a asignarsela.`}
+        confirmLabel="Quitar asignacion"
+        pendingLabel="Quitando..."
+        loading={Boolean(loadingKey)}
+        onConfirm={handleRemoveRoutine}
+        onCancel={() => {
+          if (!loadingKey) {
+            setRemoveTarget(null);
+          }
+        }}
+      />
     </div>
   );
 }

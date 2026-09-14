@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
+import Icon from "@/components/ui/Icon";
+import { Alert, EmptyState } from "@/components/ui/Feedback";
 import { isAthleteRoleName, isCoachRoleName, normalizeRoleKey } from "@/lib/roles";
 
 const WEEKLY_AVAILABILITY_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map(
@@ -27,20 +29,14 @@ const EMPTY_FORM = {
 
 function getStatus(user) {
   if (user?.isDeleted === true) {
-    return {
-      label: "Eliminado",
-      className: "border border-rose-300/40 bg-rose-900/30 text-rose-100",
-    };
+    return { label: "Eliminado", className: "r360-badge-peligro" };
   }
 
   if (user?.isActive === false) {
-    return {
-      label: "Desactivado",
-      className: "border border-amber-300/40 bg-amber-900/30 text-amber-100",
-    };
+    return { label: "Desactivado", className: "r360-badge-aviso" };
   }
 
-  return { label: "Activo", className: "border border-cyan-300/35 bg-cyan-300/10 text-cyan-100" };
+  return { label: "Activo", className: "r360-badge-exito" };
 }
 
 export default function RoleUsersManager({
@@ -260,54 +256,54 @@ export default function RoleUsersManager({
     }
   }
 
-  const inputClassName = "rounded-lg border border-white/20 bg-[#17385a] px-3 py-2 text-white";
+  const inputClassName = "r360-input";
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+    <div className="space-y-4">
+      {/*
+        Cabecera y filtros vivian en dos tarjetas separadas, asi que el buscador
+        quedaba lejos del contador de resultados que iba a modificar.
+      */}
+      <section className="r360-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-white">Usuarios registrados</h2>
-            <p className="mt-1 text-sm text-white/75">
-              {filteredUsers.length === 1
-                ? "1 usuario visible en este rol."
-                : `${filteredUsers.length} usuarios visibles en este rol.`}
+            <h2 className="text-lg font-bold text-texto">Usuarios registrados</h2>
+            <p className="mt-1 text-sm text-texto-2">
+              {filteredUsers.length === users.length
+                ? `${users.length} usuario${users.length === 1 ? "" : "s"} en este rol.`
+                : `${filteredUsers.length} de ${users.length} usuarios coinciden con el filtro.`}
             </p>
-            {shouldShowUserFilters && filteredUsers.length !== users.length ? (
-              <p className="mt-1 text-xs text-white/60">Total del rol: {users.length}</p>
-            ) : null}
           </div>
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
-          >
+          <button type="button" onClick={openCreateModal} className="r360-btn r360-btn-primary">
+            <Icon name="mas" />
             Agregar usuario
           </button>
         </div>
-        {message ? <p className="mt-3 text-sm text-cyan-100">{message}</p> : null}
-        {error && !isCreateModalOpen ? <p className="mt-3 text-sm text-rose-200">{error}</p> : null}
-      </section>
 
-      {shouldShowUserFilters ? (
-        <section className="rounded-3xl border border-white/15 bg-[#17385a] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <input
-              type="search"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Buscar por DNI, username, email o gym"
-              aria-label="Buscar usuarios"
-              className={`rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-sm text-white placeholder:text-white/55 ${
-                shouldShowGymFilter ? "md:col-span-1" : "md:col-span-2"
-              }`}
-            />
+        {shouldShowUserFilters ? (
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div
+              className={`relative ${shouldShowGymFilter ? "md:col-span-1" : "md:col-span-2"}`}
+            >
+              <Icon
+                name="buscar"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-texto-3"
+              />
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Buscar por DNI, username, email o gym"
+                aria-label="Buscar usuarios"
+                className="r360-input pl-9"
+              />
+            </div>
             {shouldShowGymFilter ? (
               <select
                 value={gymFilterId}
                 onChange={(event) => setGymFilterId(event.target.value)}
                 aria-label="Filtrar por gimnasio"
-                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-sm text-white"
+                className="r360-input"
               >
                 <option value="all">Todos los gyms</option>
                 {gymOwners.map((owner) => (
@@ -321,7 +317,7 @@ export default function RoleUsersManager({
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
               aria-label="Filtrar por estado"
-              className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-sm text-white"
+              className="r360-input"
             >
               <option value="all">Todos los estados</option>
               <option value="active">Activos</option>
@@ -329,57 +325,79 @@ export default function RoleUsersManager({
               <option value="deleted">Eliminados</option>
             </select>
           </div>
-        </section>
-      ) : null}
+        ) : null}
+
+        {message ? (
+          <Alert tone="exito" className="mt-4">
+            {message}
+          </Alert>
+        ) : null}
+        {error && !isCreateModalOpen ? (
+          <Alert className="mt-4">{error}</Alert>
+        ) : null}
+      </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {filteredUsers.map((user) => {
           const status = getStatus(user);
           const shouldShowPermanent = user?.isDeleted === true || user?.isActive === false;
           const isBusy = actionLoadingId === user.id;
+          const coachLabels = athleteCoachLabelsByUserId?.[String(user.id)] || [];
+          const routineCount = Number(athleteAssignedRoutinesCountByUserId?.[String(user.id)] || 0);
 
           return (
-            <article
-              key={user.id}
-              className="rounded-3xl border border-white/15 bg-[#17385a] p-5 shadow-sm"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-white/60">
-                    Usuario #{user.id}
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-white">{user.username}</p>
-                  <p className="mt-1 text-sm text-white/70">DNI: {user.dni || "Sin dato"}</p>
-                </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}>
-                  {status.label}
+            <article key={user.id} className="r360-card flex flex-col p-5">
+              <div className="flex items-start gap-3">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-acento/35 bg-acento/10 text-base font-bold text-acento">
+                  {String(user.username || "?").charAt(0).toUpperCase()}
                 </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-base font-bold text-texto">{user.username}</p>
+                  <p className="truncate text-xs text-texto-3">{user.email || "Sin email"}</p>
+                </div>
+                <span className={`r360-badge ${status.className}`}>{status.label}</span>
               </div>
 
-              <p className="mt-2 text-sm text-white/75">{user.email || "Sin email"}</p>
-              {isCoachRole || isAthleteRole ? (
-                <p className="mt-1 text-sm text-white/75">Gym: {getGymLabel(user)}</p>
-              ) : null}
-              {isAthleteRole ? (
-                <>
-                  <p className="mt-1 text-sm text-white/75">
-                    Coach:{" "}
-                    {(athleteCoachLabelsByUserId?.[String(user.id)] || []).join(" · ") ||
-                      "Sin coach asignado"}
-                  </p>
-                  <p className="mt-1 text-sm text-white/75">
-                    Rutinas asignadas:{" "}
-                    {Number(athleteAssignedRoutinesCountByUserId?.[String(user.id)] || 0)}
-                  </p>
-                </>
-              ) : null}
+              <dl className="mt-4 space-y-1.5 text-sm">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-texto-3">DNI</dt>
+                  <dd className="truncate text-texto-2">{user.dni || "Sin dato"}</dd>
+                </div>
+                {isCoachRole || isAthleteRole ? (
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-texto-3">Gym</dt>
+                    <dd className="truncate text-texto-2">{getGymLabel(user)}</dd>
+                  </div>
+                ) : null}
+                {isAthleteRole ? (
+                  <>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-texto-3">Coach</dt>
+                      <dd className="truncate text-texto-2">
+                        {coachLabels.join(" · ") || "Sin asignar"}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-texto-3">Rutinas</dt>
+                      <dd
+                        className={`r360-badge ${
+                          routineCount > 0 ? "r360-badge-exito" : "r360-badge-neutro"
+                        }`}
+                      >
+                        {routineCount}
+                      </dd>
+                    </div>
+                  </>
+                ) : null}
+              </dl>
 
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-auto flex flex-wrap gap-2 pt-4">
                 <Link
                   href={`/inicio/roles-usuarios/${roleId}/${user.id}`}
-                  className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
+                  className="r360-btn r360-btn-accent r360-btn-sm flex-1"
                 >
                   Ver perfil
+                  <Icon name="chevron" />
                 </Link>
                 <button
                   type="button"
@@ -391,7 +409,7 @@ export default function RoleUsersManager({
                     })
                   }
                   disabled={isBusy}
-                  className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium text-white/85 hover:bg-white/10 disabled:opacity-60"
+                  className="r360-btn r360-btn-ghost r360-btn-sm"
                 >
                   Eliminar
                 </button>
@@ -406,7 +424,7 @@ export default function RoleUsersManager({
                       })
                     }
                     disabled={isBusy}
-                    className="rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-60"
+                    className="r360-btn r360-btn-danger r360-btn-sm w-full"
                   >
                     Eliminar de manera permanente
                   </button>
@@ -416,9 +434,29 @@ export default function RoleUsersManager({
           );
         })}
         {filteredUsers.length === 0 ? (
-          <article className="rounded-3xl border border-white/15 bg-[#17385a] p-5 text-sm text-white/75 shadow-sm md:col-span-2 xl:col-span-3">
-            No hay usuarios que coincidan con los filtros actuales.
-          </article>
+          <div className="md:col-span-2 xl:col-span-3">
+            <EmptyState
+              icon="usuarios"
+              title={
+                users.length === 0
+                  ? "Todavia no hay usuarios en este rol"
+                  : "Ningun usuario coincide con los filtros"
+              }
+              description={
+                users.length === 0
+                  ? "Usa el boton Agregar usuario para dar de alta el primero."
+                  : "Proba con otro termino de busqueda o limpia los filtros de estado y gimnasio."
+              }
+              action={
+                users.length === 0 ? (
+                  <button type="button" onClick={openCreateModal} className="r360-btn r360-btn-primary">
+                    <Icon name="mas" />
+                    Agregar usuario
+                  </button>
+                ) : null
+              }
+            />
+          </div>
         ) : null}
       </section>
 
@@ -553,21 +591,25 @@ export default function RoleUsersManager({
             </>
           ) : null}
 
-          {error ? <p className="text-sm text-rose-200 md:col-span-2">{error}</p> : null}
+          {error ? (
+            <div className="md:col-span-2">
+              <Alert>{error}</Alert>
+            </div>
+          ) : null}
 
           <div className="flex flex-wrap justify-end gap-2 md:col-span-2">
             <button
               type="button"
               onClick={closeCreateModal}
               disabled={loading}
-              className="rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white/85 hover:bg-white/10 disabled:opacity-60"
+              className="r360-btn r360-btn-ghost"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60"
+              className="r360-btn r360-btn-accent"
             >
               {loading ? "Creando..." : "Crear usuario"}
             </button>

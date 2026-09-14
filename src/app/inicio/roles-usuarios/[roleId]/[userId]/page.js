@@ -3,6 +3,10 @@ import AthleteAssignedRoutinesList from "@/components/roles/AthleteAssignedRouti
 import AthleteCoachLinkCard from "@/components/roles/AthleteCoachLinkCard";
 import AthleteRoutineAssignment from "@/components/roles/AthleteRoutineAssignment";
 import BackNavButton from "@/components/BackNavButton";
+import Icon from "@/components/ui/Icon";
+import PageHeader from "@/components/ui/PageHeader";
+import { SectionCard } from "@/components/ui/Card";
+import { Alert, EmptyState } from "@/components/ui/Feedback";
 import CoachAthleteAssignment from "@/components/roles/CoachAthleteAssignment";
 import CoachRoutinesList from "@/components/roles/CoachRoutinesList";
 import UserProfileEditor from "@/components/roles/UserProfileEditor";
@@ -285,35 +289,50 @@ export default async function UserProfilePage({ params, searchParams }) {
     ? `/inicio/roles-usuarios/${roleId}/${coachId}`
     : `/inicio/roles-usuarios/${roleId}`;
 
+  const roleLabel = userRoleName || (role ? role.name : `Rol #${roleId}`);
+  const userLabel = user ? user.username || `Usuario #${user.id}` : `Usuario #${userId}`;
+
+  // La miga intermedia cambia si se llego desde la ficha de un coach: asi la
+  // ruta de vuelta refleja el camino real y no uno inventado.
+  const breadcrumbs = [
+    { href: "/inicio", label: "Panel" },
+    { href: "/inicio/roles-usuarios", label: "Roles y usuarios" },
+    { href: `/inicio/roles-usuarios/${roleId}`, label: roleLabel },
+    ...(coachId ? [{ href: `/inicio/roles-usuarios/${roleId}/${coachId}`, label: "Coach" }] : []),
+    { label: userLabel },
+  ];
+
   return (
-    <section className="space-y-6 text-slate-100">
-      <header className="rounded-3xl border border-white/15 bg-[#0f2a46] p-8 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60">Rutina360</p>
-            <h1 className="mt-1 text-3xl font-extrabold text-white">Perfil de usuario</h1>
-            <p className="mt-2 text-white/80">
-              {user ? `${user.username} · Usuario #${user.id}` : `Usuario #${userId}`}
-            </p>
-            <p className="mt-1 text-sm text-cyan-300">
-              Rol: {userRoleName || (role ? role.name : `#${roleId}`)}
-            </p>
-          </div>
+    <section className="space-y-5">
+      <PageHeader
+        eyebrow="Perfil de usuario"
+        title={userLabel}
+        breadcrumbs={breadcrumbs}
+        meta={
+          <>
+            <span className="r360-badge r360-badge-acento">
+              <Icon name={isAthleteProfile ? "perfil" : isCoachProfile ? "usuarios" : "gym"} />
+              {roleLabel}
+            </span>
+            {user ? <span className="r360-badge r360-badge-neutro">ID {user.id}</span> : null}
+            {user?.email ? (
+              <span className="r360-badge r360-badge-neutro">{user.email}</span>
+            ) : null}
+          </>
+        }
+        actions={
           <BackNavButton
             fallbackHref={backFallbackHref}
             allowHistoryBack={!cameFromRoutineDetail}
-            className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+            className="r360-btn r360-btn-ghost"
           >
-            Volver a usuarios
+            <Icon name="atras" />
+            Volver
           </BackNavButton>
-        </div>
-      </header>
+        }
+      />
 
-      {errorMessage ? (
-        <div className="rounded-2xl border border-red-300/40 bg-red-950/40 p-4 text-red-200">
-          {errorMessage}
-        </div>
-      ) : null}
+      {errorMessage ? <Alert title="No se pudo cargar el perfil">{errorMessage}</Alert> : null}
 
       {!errorMessage && user ? (
         isAthleteProfile ? (
@@ -333,58 +352,79 @@ export default async function UserProfilePage({ params, searchParams }) {
 
       {!errorMessage && user && isCoachProfile ? (
         <>
-          <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-            <h2 className="text-lg font-bold text-white">Rutinas del coach</h2>
+          <SectionCard
+            title="Rutinas del coach"
+            description="Rutinas creadas por este coach y a quien estan asignadas."
+            icon={<Icon name="rutinas" className="text-acento" />}
+          >
             <CoachRoutinesList
               roleId={roleId}
               userId={user.id}
               routines={coachRoutines}
               assignmentsByRoutineId={coachAssignmentsByRoutineId}
             />
-          </section>
+          </SectionCard>
 
-          <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-            <h2 className="text-lg font-bold text-white">Atletas asignados</h2>
+          <SectionCard
+            title="Atletas asignados"
+            description="Atletas vinculados a este coach dentro del gimnasio."
+            icon={<Icon name="usuarios" className="text-acento" />}
+          >
             <CoachAthleteAssignment
               coachId={user.id}
               athletes={availableAthletes}
               athleteRoleId={athleteRoleId}
             />
             {assignedAthletes.length === 0 ? (
-              <p className="mt-3 text-sm text-white/75">Este coach no tiene atletas asignados.</p>
+              <EmptyState
+                className="mt-4"
+                icon="usuarios"
+                title="Este coach no tiene atletas asignados"
+                description="Usa el buscador de arriba para vincular atletas del gimnasio."
+              />
             ) : (
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                 {assignedAthletes.map((link) => (
-                  <article
-                    key={link.id}
-                    className="rounded-2xl border border-white/15 bg-[#0f2a46] p-4 shadow-[0_6px_18px_rgba(0,0,0,0.22)]"
-                  >
-                    <p className="text-xs uppercase tracking-wide text-white/60">Vinculo #{link.id}</p>
-                    <p className="mt-1 font-semibold text-white">
-                      {link?.athlete?.username || `Atleta #${link.idAthlete}`}
-                    </p>
-                    <p className="mt-2 text-sm text-white/80">
-                      Email: {link?.athlete?.email || "Sin dato"}
-                    </p>
-                    <p className="text-sm text-white/80">
-                      Disponibilidad: {link?.athlete?.weeklyAvailability || "Sin dato"}
-                    </p>
-                    <p className="text-sm text-white/80">
-                      Alta del vinculo: {formatDate(link?.createdAt)}
-                    </p>
+                  <article key={link.id} className="r360-card-inset p-4">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-acento/35 bg-acento/10 text-sm font-bold text-acento">
+                        {String(link?.athlete?.username || "?").charAt(0).toUpperCase()}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate font-bold text-texto">
+                          {link?.athlete?.username || `Atleta #${link.idAthlete}`}
+                        </p>
+                        <p className="truncate text-xs text-texto-3">
+                          {link?.athlete?.email || "Sin email"}
+                        </p>
+                      </div>
+                    </div>
+                    <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <dt className="text-texto-3">Disponibilidad</dt>
+                        <dd className="mt-0.5 text-texto-2">
+                          {link?.athlete?.weeklyAvailability || "Sin dato"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-texto-3">Alta del vinculo</dt>
+                        <dd className="mt-0.5 text-texto-2">{formatDate(link?.createdAt)}</dd>
+                      </div>
+                    </dl>
                     {athleteRoleId ? (
                       <Link
                         href={`/inicio/roles-usuarios/${athleteRoleId}/${link.idAthlete}?coachId=${user.id}`}
-                        className="mt-3 inline-block rounded-lg border border-cyan-300/40 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
+                        className="r360-btn r360-btn-accent r360-btn-sm mt-3 w-full"
                       >
                         Ir al perfil del atleta
+                        <Icon name="chevron" />
                       </Link>
                     ) : null}
                   </article>
                 ))}
               </div>
             )}
-          </section>
+          </SectionCard>
         </>
       ) : null}
 
@@ -399,12 +439,15 @@ export default async function UserProfilePage({ params, searchParams }) {
       ) : null}
 
       {!errorMessage && user && isAthleteProfile ? (
-        <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-          <h2 className="text-lg font-bold text-white">Rutinas asignadas al atleta</h2>
+        <SectionCard
+          title="Rutinas asignadas al atleta"
+          description="Rutinas activas que el atleta ve en la app."
+          icon={<Icon name="rutinas" className="text-acento" />}
+        >
           {assignedRoutinesError ? (
-            <p className="mt-3 rounded-xl border border-amber-300/40 bg-amber-900/30 p-3 text-sm text-amber-100">
+            <Alert tone="aviso" className="mb-4">
               {assignedRoutinesError}
-            </p>
+            </Alert>
           ) : null}
           <AthleteAssignedRoutinesList
             roleId={roleId}
@@ -412,7 +455,7 @@ export default async function UserProfilePage({ params, searchParams }) {
             coachId={coachId || ""}
             assignments={athleteAssignedRoutines}
           />
-        </section>
+        </SectionCard>
       ) : null}
     </section>
   );

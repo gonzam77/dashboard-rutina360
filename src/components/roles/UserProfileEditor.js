@@ -2,7 +2,25 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Icon from "@/components/ui/Icon";
+import { Alert } from "@/components/ui/Feedback";
 import { isAthleteRoleName, isCoachRoleName, normalizeRoleKey } from "@/lib/roles";
+
+/**
+ * Dato del perfil en modo lectura. Antes cada campo era un parrafo
+ * "Etiqueta: valor" y con doce campos seguidos no se distinguia donde terminaba
+ * uno y empezaba el siguiente.
+ */
+function DataRow({ label, value }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b border-linea-suave py-2 last:border-b-0">
+      <dt className="shrink-0 text-xs font-semibold uppercase tracking-wide text-texto-3">
+        {label}
+      </dt>
+      <dd className="min-w-0 truncate text-sm text-texto">{value || "Sin dato"}</dd>
+    </div>
+  );
+}
 
 const WEEKLY_AVAILABILITY_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map(
   (days) => `${days} dia${days === 1 ? "" : "s"} a la semana`
@@ -125,9 +143,12 @@ export default function UserProfileEditor({ user, roleName }) {
   }
 
   return (
-    <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+    <section className="r360-card p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-bold text-white">Datos del perfil</h2>
+        <h2 className="flex items-center gap-2 text-lg font-bold text-texto">
+          <Icon name="perfil" className="text-acento" />
+          Datos del perfil
+        </h2>
         {!isEditing ? (
           <button
             type="button"
@@ -136,31 +157,37 @@ export default function UserProfileEditor({ user, roleName }) {
               setMessage("");
               setIsEditing(true);
             }}
-            className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
+            className="r360-btn r360-btn-accent r360-btn-sm"
           >
             Editar datos
           </button>
         ) : null}
       </div>
 
+      {!isEditing && message ? (
+        <Alert tone="exito" className="mt-4">
+          {message}
+        </Alert>
+      ) : null}
+
       {!isEditing ? (
-        <div className="mt-4 grid grid-cols-1 gap-3 text-sm text-white/85 md:grid-cols-2">
-          <p><span className="font-medium">Username:</span> {user?.username || "Sin dato"}</p>
-          {requiresDni ? <p><span className="font-medium">DNI:</span> {user?.dni || "Sin dato"}</p> : null}
-          <p><span className="font-medium">Email:</span> {user?.email || "Sin dato"}</p>
-          <p><span className="font-medium">Nacimiento:</span> {form.birthDate || "Sin dato"}</p>
-          {showPersonalData ? <p><span className="font-medium">Genero:</span> {user?.gender || "Sin dato"}</p> : null}
-          <p><span className="font-medium">Telefono:</span> {user?.phone || "Sin dato"}</p>
-          <p><span className="font-medium">Direccion:</span> {user?.address || "Sin dato"}</p>
+        <dl className="mt-4 grid grid-cols-1 gap-x-6 md:grid-cols-2">
+          <DataRow label="Username" value={user?.username} />
+          {requiresDni ? <DataRow label="DNI" value={user?.dni} /> : null}
+          <DataRow label="Email" value={user?.email} />
+          <DataRow label="Nacimiento" value={form.birthDate} />
+          {showPersonalData ? <DataRow label="Genero" value={user?.gender} /> : null}
+          <DataRow label="Telefono" value={user?.phone} />
+          <DataRow label="Direccion" value={user?.address} />
           {athleteRole ? (
             <>
-              <p><span className="font-medium">Altura:</span> {user?.height || "Sin dato"}</p>
-              <p><span className="font-medium">Peso:</span> {user?.weight || "Sin dato"}</p>
-              <p><span className="font-medium">Objetivo:</span> {user?.goal || "Sin dato"}</p>
-              <p><span className="font-medium">Disponibilidad:</span> {user?.weeklyAvailability || "Sin dato"}</p>
+              <DataRow label="Altura" value={user?.height ? `${user.height} cm` : ""} />
+              <DataRow label="Peso" value={user?.weight ? `${user.weight} kg` : ""} />
+              <DataRow label="Objetivo" value={user?.goal} />
+              <DataRow label="Disponibilidad" value={user?.weeklyAvailability} />
             </>
           ) : null}
-        </div>
+        </dl>
       ) : (
         <form className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={handleSubmit}>
           {requiresDni ? (
@@ -169,7 +196,7 @@ export default function UserProfileEditor({ user, roleName }) {
               type="text"
               value={form.dni}
               onChange={(event) => updateField("dni", event.target.value)}
-              className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white"
+              className="r360-input"
               placeholder="DNI"
             />
           ) : null}
@@ -178,7 +205,7 @@ export default function UserProfileEditor({ user, roleName }) {
             type="text"
             value={form.username}
             onChange={(event) => updateField("username", event.target.value)}
-            className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white"
+            className="r360-input"
             placeholder="Username"
           />
           <input
@@ -186,7 +213,7 @@ export default function UserProfileEditor({ user, roleName }) {
             type="email"
             value={form.email}
             onChange={(event) => updateField("email", event.target.value)}
-            className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white"
+            className="r360-input"
             placeholder="Email"
           />
           {showPersonalData ? (
@@ -196,13 +223,13 @@ export default function UserProfileEditor({ user, roleName }) {
                 type="date"
                 value={form.birthDate}
                 onChange={(event) => updateField("birthDate", event.target.value)}
-                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white"
+                className="r360-input"
               />
               <select
                 required
                 value={form.gender}
                 onChange={(event) => updateField("gender", event.target.value)}
-                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white"
+                className="r360-input"
               >
                 <option value="" disabled>Seleccionar genero</option>
                 <option value="masculino">Masculino</option>
@@ -214,21 +241,21 @@ export default function UserProfileEditor({ user, roleName }) {
             type="text"
             value={form.phone}
             onChange={(event) => updateField("phone", event.target.value)}
-            className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white"
+            className="r360-input"
             placeholder="Telefono (opcional)"
           />
           <input
             type="text"
             value={form.address}
             onChange={(event) => updateField("address", event.target.value)}
-            className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white"
+            className="r360-input"
             placeholder="Direccion (opcional)"
           />
           <input
             type="password"
             value={form.password}
             onChange={(event) => updateField("password", event.target.value)}
-            className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white md:col-span-2"
+            className="r360-input md:col-span-2"
             placeholder="Nueva password (opcional)"
           />
           {athleteRole ? (
@@ -239,7 +266,7 @@ export default function UserProfileEditor({ user, roleName }) {
                 min="1"
                 value={form.height}
                 onChange={(event) => updateField("height", event.target.value)}
-                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white"
+                className="r360-input"
                 placeholder="Altura (cm)"
               />
               <input
@@ -248,21 +275,21 @@ export default function UserProfileEditor({ user, roleName }) {
                 min="1"
                 value={form.weight}
                 onChange={(event) => updateField("weight", event.target.value)}
-                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white"
+                className="r360-input"
                 placeholder="Peso (kg)"
               />
               <input
                 type="text"
                 value={form.goal}
                 onChange={(event) => updateField("goal", event.target.value)}
-                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white md:col-span-2"
+                className="r360-input md:col-span-2"
                 placeholder="Objetivo (opcional)"
               />
               <select
                 required
                 value={form.weeklyAvailability}
                 onChange={(event) => updateField("weeklyAvailability", event.target.value)}
-                className="rounded-lg border border-white/20 bg-[#0f2a46] px-3 py-2 text-white md:col-span-2"
+                className="r360-input md:col-span-2"
               >
                 <option value="" disabled>Seleccionar disponibilidad semanal</option>
                 {WEEKLY_AVAILABILITY_OPTIONS.map((option) => (
@@ -274,8 +301,16 @@ export default function UserProfileEditor({ user, roleName }) {
             </>
           ) : null}
 
-          {message ? <p className="text-sm text-cyan-100 md:col-span-2">{message}</p> : null}
-          {error ? <p className="text-sm text-rose-200 md:col-span-2">{error}</p> : null}
+          {message ? (
+            <div className="md:col-span-2">
+              <Alert tone="exito">{message}</Alert>
+            </div>
+          ) : null}
+          {error ? (
+            <div className="md:col-span-2">
+              <Alert>{error}</Alert>
+            </div>
+          ) : null}
 
           <div className="flex justify-end gap-2 md:col-span-2">
             <button
@@ -286,14 +321,14 @@ export default function UserProfileEditor({ user, roleName }) {
                 setIsEditing(false);
               }}
               disabled={saving}
-              className="rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white/85 hover:bg-white/10 disabled:opacity-60"
+              className="r360-btn r360-btn-ghost"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-60"
+              className="r360-btn r360-btn-primary"
             >
               {saving ? "Guardando..." : "Guardar cambios"}
             </button>

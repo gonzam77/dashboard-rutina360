@@ -1,5 +1,9 @@
 import Link from "next/link";
 import RoutineEditButton from "@/components/roles/RoutineEditButton";
+import Icon from "@/components/ui/Icon";
+import PageHeader from "@/components/ui/PageHeader";
+import { SectionCard } from "@/components/ui/Card";
+import { Alert, EmptyState } from "@/components/ui/Feedback";
 import { findUserById, getExercisesStrict, getRoutinesStrict } from "@/lib/backend";
 import { getRoutineExerciseId, getRoutineExercises, getRoutineOwnerId } from "@/lib/routines";
 import { canManageRoutine, getViewer } from "@/lib/viewer";
@@ -7,6 +11,16 @@ import { canManageRoutine, getViewer } from "@/lib/viewer";
 export const metadata = {
   title: "Detalle de rutina",
 };
+
+/** Dato suelto de la cabecera: etiqueta arriba, valor abajo. */
+function DataItem({ label, value }) {
+  return (
+    <div className="r360-card-inset px-3 py-2.5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-texto-3">{label}</p>
+      <p className="mt-1 text-sm font-bold text-texto">{value}</p>
+    </div>
+  );
+}
 
 export default async function RoutineDetailPage({ params, searchParams }) {
   const { roleId, userId, routineId } = await params;
@@ -23,6 +37,7 @@ export default async function RoutineDetailPage({ params, searchParams }) {
   let routineExercises = [];
   let exerciseNameById = new Map();
   let canEditRoutine = false;
+  let profileLabel = `Usuario #${userId}`;
 
   try {
     const viewer = await getViewer();
@@ -31,11 +46,14 @@ export default async function RoutineDetailPage({ params, searchParams }) {
       throw new Error("No autenticado.");
     }
 
-    const [routines, exercises] = await Promise.all([
+    const [routines, exercises, profileUser] = await Promise.all([
       getRoutinesStrict(viewer.token),
       getExercisesStrict(viewer.token),
+      // Solo para la miga de pan: sin el nombre, la ruta no dice de quien es la rutina.
+      findUserById(viewer.token, userId),
     ]);
 
+    profileLabel = profileUser?.username || profileLabel;
     routine = routines.find((item) => String(item?.id) === String(routineId)) || null;
 
     if (!routine) {
@@ -54,66 +72,77 @@ export default async function RoutineDetailPage({ params, searchParams }) {
     errorMessage = error?.message || "No se pudo cargar la rutina.";
   }
 
+  const routineLabel = routine?.name || `Rutina #${routineId}`;
+
   return (
-    <section className="space-y-6 text-white">
-      <header className="rounded-3xl border border-white/15 bg-[#0f2a46] p-8 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-white">Detalle de rutina</h1>
-            <p className="mt-2 text-white/80">
-              {routine ? `${routine.name} · Rutina #${routine.id}` : `Rutina #${routineId}`}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+    <section className="space-y-5">
+      <PageHeader
+        eyebrow="Detalle de rutina"
+        title={routineLabel}
+        breadcrumbs={[
+          { href: "/inicio", label: "Panel" },
+          { href: "/inicio/roles-usuarios", label: "Roles y usuarios" },
+          { href: `/inicio/roles-usuarios/${roleId}`, label: `Rol #${roleId}` },
+          { href: backToProfileHref, label: profileLabel },
+          { label: routineLabel },
+        ]}
+        meta={
+          routine ? (
+            <>
+              <span className="r360-badge r360-badge-neutro">ID {routine.id}</span>
+              <span className="r360-badge r360-badge-acento">
+                {routineExercises.length} ejercicio{routineExercises.length === 1 ? "" : "s"}
+              </span>
+              {routine.time ? (
+                <span className="r360-badge r360-badge-neutro">{routine.time} min</span>
+              ) : null}
+            </>
+          ) : null
+        }
+        actions={
+          <>
             {routine && canEditRoutine ? (
-              <RoutineEditButton
-                routine={routine}
-                className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
-              />
+              <RoutineEditButton routine={routine} className="r360-btn r360-btn-accent" />
             ) : null}
-            <Link
-              href={backToProfileHref}
-              className="rounded-lg border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
-            >
+            <Link href={backToProfileHref} className="r360-btn r360-btn-ghost">
+              <Icon name="atras" />
               Volver al perfil
             </Link>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
-      {errorMessage ? (
-        <div className="rounded-2xl border border-red-300/40 bg-red-950/40 p-4 text-red-200">
-          {errorMessage}
-        </div>
+      {errorMessage ? <Alert title="No se pudo cargar la rutina">{errorMessage}</Alert> : null}
+
+      {!errorMessage && routine ? (
+        <SectionCard
+          title="Cabecera"
+          description="Datos generales de la rutina."
+          icon={<Icon name="info" className="text-acento" />}
+        >
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <DataItem label="Nombre" value={routine.name || "-"} />
+            <DataItem label="Coach (idUser)" value={routine.idUser || "-"} />
+            <DataItem label="Orden" value={routine.order || "-"} />
+            <DataItem label="Tiempo" value={`${routine.time || "-"} min`} />
+          </div>
+        </SectionCard>
       ) : null}
 
       {!errorMessage && routine ? (
-        <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-          <h2 className="text-lg font-semibold text-white">Cabecera</h2>
-          <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-white/85 md:grid-cols-2">
-            <p>
-              <span className="font-medium">Nombre:</span> {routine.name || "-"}
-            </p>
-            <p>
-              <span className="font-medium">Coach (idUser):</span> {routine.idUser || "-"}
-            </p>
-            <p>
-              <span className="font-medium">Orden:</span> {routine.order || "-"}
-            </p>
-            <p>
-              <span className="font-medium">Tiempo:</span> {routine.time || "-"} min
-            </p>
-          </div>
-        </section>
-      ) : null}
-
-      {!errorMessage && routine ? (
-        <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-          <h2 className="text-lg font-semibold text-white">Ejercicios</h2>
+        <SectionCard
+          title="Ejercicios"
+          description="En el orden en que los ve el atleta en la app."
+          icon={<Icon name="catalogo" className="text-acento" />}
+        >
           {routineExercises.length === 0 ? (
-            <p className="mt-3 text-sm text-white/75">La rutina no tiene ejercicios asociados.</p>
+            <EmptyState
+              icon="catalogo"
+              title="La rutina no tiene ejercicios"
+              description="Edita la rutina para agregarle ejercicios."
+            />
           ) : (
-            <div className="mt-4 space-y-3">
+            <ol className="space-y-3">
               {routineExercises.map((item, index) => {
                 const idEjercice = getRoutineExerciseId(item);
                 const exerciseName =
@@ -123,25 +152,32 @@ export default async function RoutineDetailPage({ params, searchParams }) {
                   `Ejercicio #${idEjercice ?? "-"}`;
 
                 return (
-                  <article
-                    key={`${idEjercice}-${index}`}
-                    className="rounded-2xl border border-white/15 bg-[#0f2a46] p-4"
-                  >
-                    <p className="text-xs uppercase tracking-wide text-white/60">
-                      Ejercicio #{index + 1}
-                    </p>
-                    <p className="mt-1 font-semibold text-white">{exerciseName}</p>
-                    <p className="mt-2 text-sm text-white/80">Series: {item?.series ?? "-"}</p>
-                    <p className="text-sm text-white/80">Descanso: {item?.rest ?? "-"} min</p>
-                    <p className="text-sm text-white/80">
-                      Comentario: {item?.comments || "Sin comentario"}
-                    </p>
-                  </article>
+                  <li key={`${idEjercice}-${index}`} className="r360-card-inset p-4">
+                    <div className="flex items-start gap-3">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-acento/12 text-sm font-bold text-acento">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-texto">{exerciseName}</p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <span className="r360-badge r360-badge-neutro">
+                            Series: {item?.series ?? "-"}
+                          </span>
+                          <span className="r360-badge r360-badge-neutro">
+                            Descanso: {item?.rest ?? "-"} min
+                          </span>
+                        </div>
+                        {item?.comments ? (
+                          <p className="mt-2 text-sm text-texto-2">{item.comments}</p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </li>
                 );
               })}
-            </div>
+            </ol>
           )}
-        </section>
+        </SectionCard>
       ) : null}
     </section>
   );

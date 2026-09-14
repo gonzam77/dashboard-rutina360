@@ -17,7 +17,7 @@ export default function RoutineDeleteButton({
   routineName,
   assignedCount = 0,
   athleteNames = [],
-  className = "rounded-lg border border-rose-300/40 bg-rose-900/25 px-3 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-900/40 disabled:opacity-60",
+  className = "r360-btn r360-btn-danger r360-btn-sm",
 }) {
   const router = useRouter();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -72,7 +72,7 @@ export default function RoutineDeleteButton({
         {loading ? "Eliminando..." : "Eliminar"}
       </button>
 
-      {error ? <p className="mt-2 text-xs text-rose-200">{error}</p> : null}
+      {error ? <p className="mt-2 text-xs text-peligro">{error}</p> : null}
 
       <ConfirmDialog
         open={isConfirmOpen}

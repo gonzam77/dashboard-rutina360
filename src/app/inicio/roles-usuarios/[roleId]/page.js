@@ -1,5 +1,8 @@
 import Link from "next/link";
 import RoleUsersManager from "@/components/roles/RoleUsersManager";
+import Icon from "@/components/ui/Icon";
+import PageHeader from "@/components/ui/PageHeader";
+import { Alert } from "@/components/ui/Feedback";
 import { getAssignments, getRolesStrict, getUserLinks, getUsersStrict } from "@/lib/backend";
 import {
   getUserRoleName,
@@ -192,38 +195,37 @@ export default async function RolUsuariosDetallePage({ params }) {
     roleKey === "coach" && isAthleteRoleName(role?.name) && viewerUserId && viewerRoleId;
 
   return (
-    <section className="space-y-6">
-      <header className="rounded-3xl border border-white/15 bg-[#0f2a46] p-8 shadow-[0_12px_30px_rgba(0,0,0,0.35)]">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-white">
-              {role ? `Usuarios del rol: ${role.name}` : "Usuarios por rol"}
-            </h1>
-            <p className="mt-3 text-white/80">{role ? `Rol #${role.id}` : `Rol #${roleId}`}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+    <section className="space-y-5">
+      <PageHeader
+        eyebrow="Usuarios por rol"
+        title={role ? role.name : `Rol #${roleId}`}
+        description="Busca, filtra y abri el perfil de cada usuario de este rol."
+        breadcrumbs={[
+          { href: "/inicio", label: "Panel" },
+          { href: "/inicio/roles-usuarios", label: "Roles y usuarios" },
+          { label: role ? role.name : `Rol #${roleId}` },
+        ]}
+        meta={
+          <span className="r360-badge r360-badge-neutro">
+            {users.length} usuario{users.length === 1 ? "" : "s"} visible
+            {users.length === 1 ? "" : "s"}
+          </span>
+        }
+        actions={
+          shouldShowAssignAthleteButton ? (
             <Link
-              href="/inicio/roles-usuarios"
-              className="rounded-lg border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+              href={`/inicio/roles-usuarios/${viewerRoleId}/${viewerUserId}`}
+              className="r360-btn r360-btn-accent"
             >
-              Volver a roles
+              <Icon name="mas" />
+              Asignar nuevo atleta
             </Link>
-            {shouldShowAssignAthleteButton ? (
-              <Link
-                href={`/inicio/roles-usuarios/${viewerRoleId}/${viewerUserId}`}
-                className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
-              >
-                Asignar nuevo atleta
-              </Link>
-            ) : null}
-          </div>
-        </div>
-      </header>
+          ) : null
+        }
+      />
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-red-300/40 bg-red-950/40 p-4 text-red-200">
-          {errorMessage}
-        </div>
+        <Alert title="No se pudieron cargar los usuarios">{errorMessage}</Alert>
       ) : (
         <RoleUsersManager
           roleId={roleId}

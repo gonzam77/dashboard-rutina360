@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { Alert } from "@/components/ui/Feedback";
 
 const INITIAL_STATE = { error: "", message: "" };
 
@@ -32,19 +33,23 @@ export default function CatalogCreateForm({
           required
           disabled={isPending}
           placeholder={placeholder}
-          className={`w-full rounded-lg border border-white/20 px-3 py-2 text-sm text-white outline-none ring-cyan-300/35 placeholder:text-white/55 focus:ring disabled:opacity-60 ${inputClassName}`}
+          className={`r360-input ${inputClassName}`}
         />
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20 disabled:opacity-60"
+          className="r360-btn r360-btn-accent"
         >
           {isPending ? pendingLabel : submitLabel}
         </button>
       </form>
 
-      {state?.error ? <p className="mt-2 text-sm text-rose-200">{state.error}</p> : null}
-      {state?.message ? <p className="mt-2 text-sm text-cyan-100">{state.message}</p> : null}
+      {state?.error ? <Alert className="mt-3">{state.error}</Alert> : null}
+      {state?.message ? (
+        <Alert tone="exito" className="mt-3">
+          {state.message}
+        </Alert>
+      ) : null}
     </div>
   );
 }
