@@ -171,6 +171,14 @@ export function resolveAdminOwnerForNewUser({ viewer, viewerGymOwnerId, requeste
   return Number.isFinite(gymOwnerId) && gymOwnerId > 0 ? gymOwnerId : null;
 }
 
+/**
+ * Editar o eliminar una rutina.
+ *
+ * Refleja exactamente lo que acepta el backend (PUT/DELETE /routine/:id):
+ * la ruta solo admite gym y coach, y el controlador les exige ser el creador
+ * ("Solo puedes editar/eliminar tus propias rutinas"). El super admin pasa por
+ * encima. Un gym NO administra las rutinas de sus coaches.
+ */
 export function canManageRoutine({ viewer, routine, routineOwner }) {
   if (!viewer || !routine) {
     return false;
@@ -182,16 +190,7 @@ export function canManageRoutine({ viewer, routine, routineOwner }) {
 
   const ownerId = Number(routine?.idUser) || Number(routineOwner?.id) || null;
 
-  if (sameId(ownerId, viewer.id)) {
-    return true;
-  }
-
-  // El gym administra tambien las rutinas de los coaches que le pertenecen.
-  if (isGymAdmin(viewer)) {
-    return sameId(resolveGymOwnerId(routineOwner), viewer.id);
-  }
-
-  return false;
+  return sameId(ownerId, viewer.id);
 }
 
 /** Una rutina es asignable si vive dentro del mismo gimnasio que el atleta. */

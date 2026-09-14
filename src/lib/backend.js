@@ -113,6 +113,15 @@ export async function findRoutineById(token, routineId) {
   return routines.find((routine) => String(routine?.id) === String(routineId)) || null;
 }
 
+/**
+ * Rutinas activas de un atleta. El backend las expone en
+ * GET /routine/assign/athlete/:idAthlete con la rutina y sus ejercicios incluidos.
+ * Lanza si falla, para no confundir "no pude leer" con "no tiene rutinas".
+ */
 export function getAthleteAssignedRoutines(token, athleteId) {
-  return readList(`${PATHS.athleteRoutines}${athleteId}`, token);
+  return readListStrict(
+    `${PATHS.athleteRoutines}/${athleteId}`,
+    token,
+    "No se pudieron cargar las rutinas asignadas al atleta."
+  );
 }

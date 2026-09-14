@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { getRoutineExercises } from "@/lib/routines";
 
 function formatDate(value) {
   if (!value) {
@@ -65,14 +66,13 @@ export default function AthleteAssignedRoutinesList({ roleId, athleteId, coachId
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {assignments.map((assignment) => {
           const routine = assignment?.Routine;
-          const routineExercises = Array.isArray(routine?.Routine_Ejercices)
-            ? routine.Routine_Ejercices
-            : [];
+          // La coleccion de ejercicios cambia de nombre segun el endpoint.
+          const routineExercises = getRoutineExercises(routine);
           const idRoutine = routine?.id || assignment?.idRoutine;
           const key = `${idRoutine}-${athleteId}`;
 
           return (
-            <article key={assignment.id} className="rounded-2xl border border-white/15 bg-[#0f2a46] p-4">
+            <article key={assignment.id ?? key} className="rounded-2xl border border-white/15 bg-[#0f2a46] p-4">
               <p className="text-xs uppercase tracking-wide text-white/60">Asignacion #{assignment.id}</p>
               <p className="mt-1 font-semibold text-white">
                 {routine?.name || `Rutina #${assignment?.idRoutine || "-"}`}

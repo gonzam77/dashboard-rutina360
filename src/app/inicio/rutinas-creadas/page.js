@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import CoachCreateRoutineButton from "@/components/roles/CoachCreateRoutineButton";
+import RoutineDeleteButton from "@/components/roles/RoutineDeleteButton";
 import { getAssignmentsStrict, getRoutinesStrict, getUsersStrict } from "@/lib/backend";
 import { getUserRoleName, isAdminOrGymRoleName, resolveGymOwnerId, sameId } from "@/lib/roles";
 import {
@@ -10,7 +11,7 @@ import {
   getRoutineOwnerId,
   isActiveRecord,
 } from "@/lib/routines";
-import { getViewer, getViewerGymOwnerId, isSuperAdmin } from "@/lib/viewer";
+import { canManageRoutine, getViewer, getViewerGymOwnerId, isSuperAdmin } from "@/lib/viewer";
 
 export const metadata = {
   title: "Rutinas creadas",
@@ -185,6 +186,12 @@ export default async function RutinasCreadasPage() {
     );
 
     for (const row of rows) {
+      // Mismo criterio que /api/routines/[routineId]: no se ofrece lo que la API rechaza.
+      row.canManage = canManageRoutine({
+        viewer,
+        routine: row.routine,
+        routineOwner: row.creator,
+      });
       groupedRows[classifyRow(row, viewer, viewerGymOwnerId)].push(row);
     }
   } catch (error) {
@@ -265,7 +272,7 @@ export default async function RutinasCreadasPage() {
                         <th className="px-3 py-3 font-semibold">Creador</th>
                         <th className="px-3 py-3 font-semibold">Usuarios asignados</th>
                         <th className="px-3 py-3 font-semibold">Ejercicios</th>
-                        <th className="px-3 py-3 font-semibold">Detalle</th>
+                        <th className="px-3 py-3 font-semibold">Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/10 text-white/85">
@@ -305,16 +312,26 @@ export default async function RutinasCreadasPage() {
                             </td>
                             <td className="px-3 py-4">{row.exerciseCount}</td>
                             <td className="px-3 py-4">
-                              {routine?.id && row.creator?.id && creatorRoleId ? (
-                                <Link
-                                  href={`/inicio/roles-usuarios/${creatorRoleId}/${row.creator.id}/rutinas/${routine.id}`}
-                                  className="inline-block rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
-                                >
-                                  Ver rutina
-                                </Link>
-                              ) : (
-                                <span className="text-xs text-white/60">Sin enlace</span>
-                              )}
+                              <div className="flex flex-wrap items-start gap-2">
+                                {routine?.id && row.creator?.id && creatorRoleId ? (
+                                  <Link
+                                    href={`/inicio/roles-usuarios/${creatorRoleId}/${row.creator.id}/rutinas/${routine.id}`}
+                                    className="inline-block rounded-lg border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/20"
+                                  >
+                                    Ver rutina
+                                  </Link>
+                                ) : (
+                                  <span className="text-xs text-white/60">Sin enlace</span>
+                                )}
+                                {row.canManage ? (
+                                  <RoutineDeleteButton
+                                    routineId={routine.id}
+                                    routineName={routine?.name || `Rutina #${routine.id}`}
+                                    assignedCount={row.assignedCount}
+                                    athleteNames={row.athleteNames}
+                                  />
+                                ) : null}
+                              </div>
                             </td>
                           </tr>
                         );

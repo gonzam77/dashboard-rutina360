@@ -7,6 +7,7 @@ import CoachAthleteAssignment from "@/components/roles/CoachAthleteAssignment";
 import CoachRoutinesList from "@/components/roles/CoachRoutinesList";
 import UserProfileEditor from "@/components/roles/UserProfileEditor";
 import {
+  getAssignments,
   getAthleteAssignedRoutines,
   getRolesStrict,
   getRoutines,
@@ -21,7 +22,13 @@ import {
   resolveGymOwnerId,
   sameId,
 } from "@/lib/roles";
-import { getRoutineOwnerCandidate, getRoutineOwnerId, isActiveRecord } from "@/lib/routines";
+import {
+  getAssignmentAthleteId,
+  getAssignmentRoutineId,
+  getRoutineOwnerCandidate,
+  getRoutineOwnerId,
+  isActiveRecord,
+} from "@/lib/routines";
 import { canManageUser, getViewer, getViewerGymOwnerId, isSuperAdmin } from "@/lib/viewer";
 
 export const metadata = {
@@ -109,7 +116,9 @@ export default async function UserProfilePage({ params, searchParams }) {
   let athleteAssignedRoutines = [];
   let assignableRoutines = [];
   let routineGroups = { own: [], gym: [], others: [] };
+  let coachAssignmentsByRoutineId = {};
   let canAssignRoutines = false;
+  let assignedRoutinesError = "";
 
   try {
     const viewer = await getViewer();
@@ -145,14 +154,46 @@ export default async function UserProfilePage({ params, searchParams }) {
     const isAthleteProfile = isAthleteRoleName(userRoleName);
 
     if (isCoachProfile) {
-      const [routines, userLinks] = await Promise.all([
+      const [routines, userLinks, assignments] = await Promise.all([
         getRoutines(viewer.token),
         getUserLinks(viewer.token),
+        getAssignments(viewer.token),
       ]);
 
       const coachGymOwnerId = resolveGymOwnerId(user);
 
       coachRoutines = routines.filter((routine) => sameId(getRoutineOwnerId(routine), user.id));
+
+      // Quien tiene cada rutina: se usa para avisar antes de una eliminacion en cascada.
+      const athleteNamesByRoutineId = new Map();
+
+      for (const assignment of assignments) {
+        if (!isActiveRecord(assignment)) {
+          continue;
+        }
+
+        const routineId = getAssignmentRoutineId(assignment);
+        const athleteId = getAssignmentAthleteId(assignment);
+
+        if (!routineId || !athleteId) {
+          continue;
+        }
+
+        if (!athleteNamesByRoutineId.has(String(routineId))) {
+          athleteNamesByRoutineId.set(String(routineId), new Map());
+        }
+
+        athleteNamesByRoutineId
+          .get(String(routineId))
+          .set(String(athleteId), assignment?.athlete?.username || `Atleta #${athleteId}`);
+      }
+
+      coachAssignmentsByRoutineId = Object.fromEntries(
+        Array.from(athleteNamesByRoutineId.entries()).map(([routineId, names]) => [
+          routineId,
+          { athleteNames: Array.from(names.values()) },
+        ])
+      );
       assignedAthletes = userLinks.filter(
         (link) => sameId(link?.idCoach || link?.coach?.id, user.id) && isActiveRecord(link)
       );
@@ -176,13 +217,18 @@ export default async function UserProfilePage({ params, searchParams }) {
     }
 
     if (isAthleteProfile) {
-      const [routines, userLinks, assigned] = await Promise.all([
+      const [routines, userLinks] = await Promise.all([
         getRoutines(viewer.token),
         getUserLinks(viewer.token),
-        getAthleteAssignedRoutines(viewer.token, user.id),
       ]);
 
-      athleteAssignedRoutines = assigned;
+      // Seccion secundaria: si falla se avisa ahi, sin tumbar el resto del perfil.
+      try {
+        athleteAssignedRoutines = await getAthleteAssignedRoutines(viewer.token, user.id);
+      } catch (assignedError) {
+        assignedRoutinesError =
+          assignedError?.message || "No se pudieron cargar las rutinas asignadas al atleta.";
+      }
 
       const athleteGymOwnerId = resolveGymOwnerId(user);
       const athleteLinks = userLinks.filter(
@@ -289,7 +335,12 @@ export default async function UserProfilePage({ params, searchParams }) {
         <>
           <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
             <h2 className="text-lg font-bold text-white">Rutinas del coach</h2>
-            <CoachRoutinesList roleId={roleId} userId={user.id} routines={coachRoutines} />
+            <CoachRoutinesList
+              roleId={roleId}
+              userId={user.id}
+              routines={coachRoutines}
+              assignmentsByRoutineId={coachAssignmentsByRoutineId}
+            />
           </section>
 
           <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
@@ -350,6 +401,11 @@ export default async function UserProfilePage({ params, searchParams }) {
       {!errorMessage && user && isAthleteProfile ? (
         <section className="rounded-3xl border border-white/15 bg-[#17385a] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
           <h2 className="text-lg font-bold text-white">Rutinas asignadas al atleta</h2>
+          {assignedRoutinesError ? (
+            <p className="mt-3 rounded-xl border border-amber-300/40 bg-amber-900/30 p-3 text-sm text-amber-100">
+              {assignedRoutinesError}
+            </p>
+          ) : null}
           <AthleteAssignedRoutinesList
             roleId={roleId}
             athleteId={user.id}
