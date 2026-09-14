@@ -27,6 +27,20 @@ export default function Modal({
   const titleId = useId();
   const descriptionId = useId();
 
+  /*
+    onClose y closeDisabled cambian de identidad en cada render del formulario
+    que abre el modal. Si el efecto dependiera de ellos, cada tecleo lo volveria
+    a montar y el foco saltaria al boton de cerrar. Los leemos desde refs para
+    que el efecto solo reaccione a `open`.
+  */
+  const onCloseRef = useRef(onClose);
+  const closeDisabledRef = useRef(closeDisabled);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    closeDisabledRef.current = closeDisabled;
+  });
+
   useEffect(() => {
     if (!open) {
       return undefined;
@@ -37,14 +51,22 @@ export default function Modal({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    const firstFocusable = dialogRef.current?.querySelector(FOCUSABLE_SELECTOR);
+    /*
+      El boton de cerrar es el primero en el DOM, pero enfocarlo al abrir hace
+      que el usuario empiece sobre la X en vez del primer campo del formulario.
+    */
+    const focusables = Array.from(
+      dialogRef.current?.querySelectorAll(FOCUSABLE_SELECTOR) || []
+    );
+    const firstFocusable =
+      focusables.find((element) => !element.hasAttribute("data-modal-close")) || focusables[0];
     (firstFocusable || dialogRef.current)?.focus();
 
     function handleKeyDown(event) {
       if (event.key === "Escape") {
-        if (!closeDisabled) {
+        if (!closeDisabledRef.current) {
           event.preventDefault();
-          onClose?.();
+          onCloseRef.current?.();
         }
         return;
       }
@@ -80,7 +102,7 @@ export default function Modal({
       document.body.style.overflow = previousOverflow;
       previouslyFocusedRef.current?.focus?.();
     };
-  }, [closeDisabled, onClose, open]);
+  }, [open]);
 
   if (!open) {
     return null;
@@ -124,6 +146,7 @@ export default function Modal({
               onClick={onClose}
               disabled={closeDisabled}
               aria-label="Cerrar"
+              data-modal-close=""
               className="r360-btn r360-btn-ghost r360-btn-sm min-h-0 h-9 w-9 p-0"
             >
               <Icon name="cerrar" />
