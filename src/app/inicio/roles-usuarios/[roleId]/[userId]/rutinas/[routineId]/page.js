@@ -7,6 +7,8 @@ import { Alert, EmptyState } from "@/components/ui/Feedback";
 import { findUserById, getExercisesStrict, getRoutinesStrict } from "@/lib/backend";
 import { getRoutineExerciseId, getRoutineExercises, getRoutineOwnerId } from "@/lib/routines";
 import { canManageRoutine, getViewer } from "@/lib/viewer";
+import { formatRest, restSecondsOf } from "@/lib/rest";
+import ExerciseImage from "@/components/ui/ExerciseImage";
 
 export const metadata = {
   title: "Detalle de rutina",
@@ -164,12 +166,13 @@ export default async function RoutineDetailPage({ params, searchParams }) {
                             Series: {item?.series ?? "-"}
                           </span>
                           <span className="r360-badge r360-badge-neutro">
-                            Descanso: {item?.rest ?? "-"} min
+                            Descanso: {formatRest(restSecondsOf(item))}
                           </span>
                         </div>
                         {item?.comments ? (
                           <p className="mt-2 text-sm text-texto-2">{item.comments}</p>
                         ) : null}
+                        <ExerciseImage exerciseId={idEjercice} name={exerciseName} className="mt-3 w-full max-w-md" />
                       </div>
                     </div>
                   </li>

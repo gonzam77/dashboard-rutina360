@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/Feedback";
 import { extractArrayPayload } from "@/lib/api-response";
+import RestInput from "@/components/ui/RestInput";
+import { formatRest } from "@/lib/rest";
 
 const MUSCLE_GROUPS_URL = "/api/muscle-groups";
 const EXERCISES_URL = "/api/exercises";
@@ -20,7 +22,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
     muscleGroupId: "",
     idEjercice: "",
     series: "",
-    rest: "",
+    restSeconds: "",
     comments: "",
   });
   const [loading, setLoading] = useState(false);
@@ -101,7 +103,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
       muscleGroupId: "",
       idEjercice: "",
       series: "",
-      rest: "",
+      restSeconds: "",
       comments: "",
     });
   }
@@ -112,7 +114,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
       return;
     }
 
-    if (!draftExercise.muscleGroupId || !draftExercise.idEjercice || !draftExercise.series || !draftExercise.rest) {
+    if (!draftExercise.muscleGroupId || !draftExercise.idEjercice || !draftExercise.series || draftExercise.restSeconds === "") {
       setError("Completa grupo muscular, ejercicio, series y descanso antes de confirmar.");
       return;
     }
@@ -123,7 +125,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
       {
         idEjercice: Number(draftExercise.idEjercice),
         series: Number(draftExercise.series),
-        rest: Number(draftExercise.rest),
+        restSeconds: Number(draftExercise.restSeconds),
         comments: draftExercise.comments?.trim() || "",
       },
     ]);
@@ -271,13 +273,9 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
                 className="r360-input placeholder:text-texto-3"
               />
 
-              <input
-                type="number"
-                min="0"
-                placeholder="Descanso entre series (min)"
-                value={draftExercise.rest}
-                onChange={(event) => updateDraftExercise("rest", event.target.value)}
-                className="r360-input placeholder:text-texto-3"
+              <RestInput
+                value={draftExercise.restSeconds}
+                onChange={(seconds) => updateDraftExercise("restSeconds", seconds)}
               />
             </div>
             <div className="mt-auto space-y-3 pt-3">
@@ -307,7 +305,7 @@ export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }
                 <div key={`confirmed-${index}`} className="flex items-center justify-between r360-input">
                   <p className="text-texto-2">
                     #{index + 1} - {exerciseNameById.get(String(item.idEjercice)) || `Ejercicio #${item.idEjercice}`}{" "}
-                    - Series {item.series} - Descanso {item.rest} min
+                    - Series {item.series} - Descanso {formatRest(item.restSeconds)}
                   </p>
                   <button
                     type="button"

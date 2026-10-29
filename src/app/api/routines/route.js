@@ -3,6 +3,7 @@ import { apiRequest, PATHS } from "@/lib/backend";
 import { jsonError, parsePositiveInt, readJsonBody, requireViewer } from "@/lib/api-guard";
 import { sameId } from "@/lib/roles";
 import { isCoach, isSuperAdmin } from "@/lib/viewer";
+import { normalizeRestFields } from "@/lib/rest";
 
 function normalizeExercises(exercises) {
   const normalized = [];
@@ -10,16 +11,16 @@ function normalizeExercises(exercises) {
   for (const item of Array.isArray(exercises) ? exercises : []) {
     const idEjercice = parsePositiveInt(item?.idEjercice);
     const series = parsePositiveInt(item?.series);
-    const rest = Number(item?.rest);
+    const restFields = normalizeRestFields(item);
 
-    if (!idEjercice || !series || !Number.isFinite(rest) || rest < 0) {
-      return { error: "Los ejercicios deben tener idEjercice, series y rest validos." };
+    if (!idEjercice || !series || !restFields) {
+      return { error: "Los ejercicios deben tener idEjercice, series y descanso validos." };
     }
 
     normalized.push({
       idEjercice,
       series,
-      rest,
+      ...restFields,
       comments: String(item?.comments || "").trim(),
     });
   }

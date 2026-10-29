@@ -241,8 +241,13 @@ export function canLinkAthleteToCoach({ viewer, viewerGymOwnerId, athlete, coach
   );
 }
 
+/**
+ * El catalogo de ejercicios lo carga solo el administrador general (super
+ * admin): cada ejercicio lleva una ilustracion generada con una sola estetica,
+ * asi que los gimnasios ya no crean, editan ni borran ejercicios.
+ */
 export function canManageExerciseCatalog(viewer) {
-  return isSuperAdmin(viewer) || isGymAdmin(viewer);
+  return isSuperAdmin(viewer);
 }
 
 /**

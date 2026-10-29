@@ -6,6 +6,8 @@ import { Alert } from "@/components/ui/Feedback";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { extractArrayPayload } from "@/lib/api-response";
 import { getRoutineExerciseId, getRoutineExercises } from "@/lib/routines";
+import RestInput from "@/components/ui/RestInput";
+import { restSecondsOf } from "@/lib/rest";
 
 const MUSCLE_GROUPS_URL = "/api/muscle-groups";
 const EXERCISES_URL = "/api/exercises";
@@ -31,7 +33,7 @@ function createInitialExerciseRows(routine) {
       ),
       idEjercice: exerciseId ? String(exerciseId) : "",
       series: item?.series != null ? String(item.series) : "",
-      rest: item?.rest != null ? String(item.rest) : "",
+      restSeconds: restSecondsOf(item) ?? "",
       comments: item?.comments || "",
     };
   });
@@ -145,7 +147,7 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
         muscleGroupId: "",
         idEjercice: "",
         series: "",
-        rest: "",
+        restSeconds: "",
         comments: "",
       },
     ]);
@@ -162,7 +164,7 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
     for (const row of exerciseRows) {
       const idEjercice = Number(row.idEjercice);
       const series = Number(row.series);
-      const rest = Number(row.rest);
+      const restSeconds = row.restSeconds === "" ? NaN : Number(row.restSeconds);
 
       if (!Number.isFinite(idEjercice) || idEjercice <= 0) {
         throw new Error("Todos los ejercicios deben tener un ejercicio seleccionado.");
@@ -172,14 +174,14 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
         throw new Error("Todos los ejercicios deben tener una cantidad valida de series.");
       }
 
-      if (!Number.isFinite(rest) || rest < 0) {
+      if (!Number.isFinite(restSeconds) || restSeconds < 0) {
         throw new Error("Todos los ejercicios deben tener un descanso valido.");
       }
 
       payloadExercises.push({
         idEjercice,
         series,
-        rest,
+        restSeconds,
         comments: row.comments?.trim() || "",
       });
     }
@@ -402,13 +404,10 @@ export default function RoutineEditor({ routine, isInModal = false, onSaved }) {
                       className={INPUT_CLASS}
                     />
 
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="Descanso entre series (min)"
-                      value={row.rest}
-                      onChange={(event) => updateExerciseRow(row.rowKey, "rest", event.target.value)}
-                      className={INPUT_CLASS}
+                    <RestInput
+                      value={row.restSeconds}
+                      onChange={(seconds) => updateExerciseRow(row.rowKey, "restSeconds", seconds)}
+                      selectClassName={INPUT_CLASS}
                     />
 
                     <input

@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import CatalogCreateForm from "@/components/catalog/CatalogCreateForm";
 import ExerciseDeleteButton from "@/components/catalog/ExerciseDeleteButton";
 import Icon from "@/components/ui/Icon";
+import ExerciseImage from "@/components/ui/ExerciseImage";
 import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Alert, EmptyState } from "@/components/ui/Feedback";
@@ -295,7 +296,8 @@ export default async function CatalogoEjerciciosPage() {
                   key={exercise.id}
                   className="r360-card-inset flex items-center justify-between gap-3 px-3 py-2.5"
                 >
-                  <div className="min-w-0">
+                  <ExerciseImage exerciseId={exercise.id} name={exercise.name} className="w-28 shrink-0" />
+                  <div className="min-w-0 flex-1">
                     <p className="break-words text-sm font-semibold text-texto">{exercise.name}</p>
                     {routineUsageVerified && (routineCount > 0 || assignedRoutineCount > 0) ? (
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
