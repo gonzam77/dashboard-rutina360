@@ -9,8 +9,9 @@ import { getRoutineExerciseId, getRoutineExercises } from "@/lib/routines";
 import RestInput from "@/components/ui/RestInput";
 import { restSecondsOf } from "@/lib/rest";
 
-const MUSCLE_GROUPS_URL = "/api/muscle-groups";
-const EXERCISES_URL = "/api/exercises";
+// El formulario de fuerza ofrece solo el catalogo de fuerza.
+const MUSCLE_GROUPS_URL = "/api/muscle-groups?kind=strength";
+const EXERCISES_URL = "/api/exercises?kind=strength";
 
 const INPUT_CLASS =
   "r360-input placeholder:text-texto-3";

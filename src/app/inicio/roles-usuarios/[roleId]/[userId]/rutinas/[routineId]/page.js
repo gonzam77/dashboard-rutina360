@@ -9,6 +9,16 @@ import { getRoutineExerciseId, getRoutineExercises, getRoutineOwnerId } from "@/
 import { canManageRoutine, getViewer } from "@/lib/viewer";
 import { formatRest, restSecondsOf } from "@/lib/rest";
 import ExerciseImage from "@/components/ui/ExerciseImage";
+import KindBadge from "@/components/ui/KindBadge";
+import {
+  formatDuration,
+  formatSeconds,
+  isFunctional,
+  itemsLabel,
+  modeLabel,
+  routineDurationSeconds,
+  routineTimeLabel,
+} from "@/lib/functional";
 
 export const metadata = {
   title: "Detalle de rutina",
@@ -75,6 +85,9 @@ export default async function RoutineDetailPage({ params, searchParams }) {
   }
 
   const routineLabel = routine?.name || `Rutina #${routineId}`;
+  // Un funcional no tiene series: se lee por tiempos y vueltas.
+  const functional = isFunctional(routine);
+  const rounds = Math.max(1, Number(routine?.rounds) || 1);
 
   return (
     <section className="space-y-5">
@@ -91,12 +104,13 @@ export default async function RoutineDetailPage({ params, searchParams }) {
         meta={
           routine ? (
             <>
+              <KindBadge routine={routine} />
               <span className="r360-badge r360-badge-neutro">ID {routine.id}</span>
-              <span className="r360-badge r360-badge-acento">
-                {routineExercises.length} ejercicio{routineExercises.length === 1 ? "" : "s"}
+              <span className="r360-badge r360-badge-neutro">
+                {itemsLabel(routine, routineExercises.length)}
               </span>
-              {routine.time ? (
-                <span className="r360-badge r360-badge-neutro">{routine.time} min</span>
+              {routine.time || functional ? (
+                <span className="r360-badge r360-badge-neutro">{routineTimeLabel(routine)}</span>
               ) : null}
             </>
           ) : null
@@ -126,21 +140,37 @@ export default async function RoutineDetailPage({ params, searchParams }) {
             <DataItem label="Nombre" value={routine.name || "-"} />
             <DataItem label="Coach (idUser)" value={routine.idUser || "-"} />
             <DataItem label="Orden" value={routine.order || "-"} />
-            <DataItem label="Tiempo" value={`${routine.time || "-"} min`} />
+            {functional ? (
+              <>
+                <DataItem label="Duracion" value={formatDuration(routineDurationSeconds(routine))} />
+                <DataItem label="Vueltas" value={rounds} />
+                <DataItem
+                  label="Descanso entre vueltas"
+                  value={rounds > 1 ? formatSeconds(routine.roundRestSeconds) : "-"}
+                />
+                <DataItem label="Modo" value={modeLabel(routine.defaultMode)} />
+              </>
+            ) : (
+              <DataItem label="Tiempo" value={`${routine.time || "-"} min`} />
+            )}
           </div>
         </SectionCard>
       ) : null}
 
       {!errorMessage && routine ? (
         <SectionCard
-          title="Ejercicios"
-          description="En el orden en que los ve el atleta en la app."
+          title={functional ? "Bloques" : "Ejercicios"}
+          description={
+            functional
+              ? "Se repiten en cada vuelta, en el orden en que los hace el atleta."
+              : "En el orden en que los ve el atleta en la app."
+          }
           icon={<Icon name="catalogo" className="text-acento" />}
         >
           {routineExercises.length === 0 ? (
             <EmptyState
               icon="catalogo"
-              title="La rutina no tiene ejercicios"
+              title={functional ? "El funcional no tiene bloques" : "La rutina no tiene ejercicios"}
               description="Edita la rutina para agregarle ejercicios."
             />
           ) : (
@@ -162,12 +192,30 @@ export default async function RoutineDetailPage({ params, searchParams }) {
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-texto">{exerciseName}</p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          <span className="r360-badge r360-badge-neutro">
-                            Series: {item?.series ?? "-"}
-                          </span>
-                          <span className="r360-badge r360-badge-neutro">
-                            Descanso: {formatRest(restSecondsOf(item))}
-                          </span>
+                          {functional ? (
+                            <>
+                              <span className="r360-badge r360-badge-aviso">
+                                Trabajo: {formatSeconds(item?.workSeconds, "-")}
+                              </span>
+                              {/* Igual que en la app: el ultimo bloque no descansa, sigue la vuelta. */}
+                              <span className="r360-badge r360-badge-neutro">
+                                {index < routineExercises.length - 1
+                                  ? `Descanso: ${formatSeconds(restSecondsOf(item) ?? 0)}`
+                                  : rounds > 1
+                                    ? `Despues: descanso entre vueltas (${formatSeconds(routine.roundRestSeconds)})`
+                                    : "Ultimo bloque"}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="r360-badge r360-badge-neutro">
+                                Series: {item?.series ?? "-"}
+                              </span>
+                              <span className="r360-badge r360-badge-neutro">
+                                Descanso: {formatRest(restSecondsOf(item))}
+                              </span>
+                            </>
+                          )}
                         </div>
                         {item?.comments ? (
                           <p className="mt-2 text-sm text-texto-2">{item.comments}</p>

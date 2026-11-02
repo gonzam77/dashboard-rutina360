@@ -4,8 +4,14 @@ import { jsonError, parsePositiveInt, readJsonBody, requireViewer } from "@/lib/
 import { getRoutineOwnerCandidate, getRoutineOwnerId } from "@/lib/routines";
 import { canManageRoutine } from "@/lib/viewer";
 import { normalizeRestFields } from "@/lib/rest";
+import { KIND_FUNCTIONAL, normalizeFunctionalRoutine } from "@/lib/functional";
 
 function normalizeRoutinePayload(body) {
+  // Los funcionales tienen sus propias reglas (lib/functional.js).
+  if (body?.kind === KIND_FUNCTIONAL) {
+    return normalizeFunctionalRoutine(body);
+  }
+
   const name = String(body?.name || "").trim();
   const idUser = parsePositiveInt(body?.idUser);
   const order = parsePositiveInt(body?.order);

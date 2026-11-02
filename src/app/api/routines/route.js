@@ -4,6 +4,7 @@ import { jsonError, parsePositiveInt, readJsonBody, requireViewer } from "@/lib/
 import { sameId } from "@/lib/roles";
 import { isCoach, isSuperAdmin } from "@/lib/viewer";
 import { normalizeRestFields } from "@/lib/rest";
+import { KIND_FUNCTIONAL, normalizeFunctionalRoutine } from "@/lib/functional";
 
 function normalizeExercises(exercises) {
   const normalized = [];
@@ -40,6 +41,27 @@ export async function POST(request) {
     }
 
     const body = await readJsonBody(request);
+
+    // Funcional: validacion propia (trabajo, descanso 0, vueltas...) y el tiempo
+    // se calcula de los bloques.
+    if (body?.kind === KIND_FUNCTIONAL) {
+      const { payload, error: functionalError } = normalizeFunctionalRoutine(body, { requireIdUser: true });
+      if (functionalError) {
+        return jsonError(functionalError, 400);
+      }
+      if (!isSuperAdmin(viewer) && !sameId(payload.idUser, viewer.id)) {
+        return jsonError("Solo podes crear rutinas a tu propio nombre.", 403);
+      }
+      const created = await apiRequest(PATHS.routines, { token: viewer.token, method: "POST", body: payload });
+      if (!created.ok) {
+        return NextResponse.json(
+          { message: created.json?.message || "No se pudo crear el funcional." },
+          { status: created.status }
+        );
+      }
+      return NextResponse.json({ ok: true, data: created.json?.data || null });
+    }
+
     const name = body?.name?.trim();
     const idUser = parsePositiveInt(body?.idUser);
     const order = parsePositiveInt(body?.order);

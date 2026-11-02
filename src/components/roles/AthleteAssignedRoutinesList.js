@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Icon from "@/components/ui/Icon";
 import { Alert, EmptyState } from "@/components/ui/Feedback";
+import KindBadge from "@/components/ui/KindBadge";
 import { getRoutineExercises } from "@/lib/routines";
+import { isFunctional, itemsLabel, roundsLabel, routineTimeLabel } from "@/lib/functional";
 
 function formatDate(value) {
   if (!value) {
@@ -97,11 +99,15 @@ export default function AthleteAssignedRoutinesList({ roleId, athleteId, coachId
               <p className="font-bold text-texto">{routineName}</p>
 
               <div className="mt-2 flex flex-wrap gap-1.5">
+                <KindBadge routine={routine} />
                 <span className="r360-badge r360-badge-neutro">ID {idRoutine || "-"}</span>
                 <span className="r360-badge r360-badge-neutro">Orden {routine?.order || "-"}</span>
-                <span className="r360-badge r360-badge-neutro">{routine?.time || "-"} min</span>
-                <span className="r360-badge r360-badge-acento">
-                  {routineExercises.length} ejercicio{routineExercises.length === 1 ? "" : "s"}
+                <span className="r360-badge r360-badge-neutro">{routineTimeLabel(routine)}</span>
+                {isFunctional(routine) ? (
+                  <span className="r360-badge r360-badge-neutro">{roundsLabel(routine)}</span>
+                ) : null}
+                <span className="r360-badge r360-badge-neutro">
+                  {itemsLabel(routine, routineExercises.length)}
                 </span>
               </div>
 

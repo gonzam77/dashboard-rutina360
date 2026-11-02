@@ -12,8 +12,13 @@ export const PATHS = {
   muscleGroups: "/muscleGroup",
 };
 
+// El backend solo devuelve entrenamientos funcionales a los clientes que los
+// saben mostrar (ver rutina360_server/middleware/clienteFuncional.js).
+const CLIENT_HEADERS = { "X-Rutina360-Funcional": "1" };
+
 function authHeaders(token, extra) {
   return {
+    ...CLIENT_HEADERS,
     ...(extra || {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };

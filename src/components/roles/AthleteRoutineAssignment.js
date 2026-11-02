@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/ui/Icon";
 import { Alert, EmptyState } from "@/components/ui/Feedback";
+import { kindLabel } from "@/lib/functional";
 
 const GROUP_LABELS = {
   own: "Mias",
@@ -176,7 +177,8 @@ export default function AthleteRoutineAssignment({
               </option>
               {filteredRoutines.map((routine) => (
                 <option key={routine.id} value={routine.id} className="bg-superficie-alta text-texto">
-                  {routine.name || `Rutina #${routine.id}`} (ID {routine.id})
+                  {/* El tipo va en el texto: un <option> no admite chips. */}
+                  {routine.name || `Rutina #${routine.id}`} · {kindLabel(routine)} (ID {routine.id})
                 </option>
               ))}
             </select>

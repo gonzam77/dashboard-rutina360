@@ -7,8 +7,9 @@ import { extractArrayPayload } from "@/lib/api-response";
 import RestInput from "@/components/ui/RestInput";
 import { formatRest } from "@/lib/rest";
 
-const MUSCLE_GROUPS_URL = "/api/muscle-groups";
-const EXERCISES_URL = "/api/exercises";
+// El formulario de fuerza ofrece solo el catalogo de fuerza.
+const MUSCLE_GROUPS_URL = "/api/muscle-groups?kind=strength";
+const EXERCISES_URL = "/api/exercises?kind=strength";
 
 export default function CoachRoutineForm({ coachId, isInModal = false, onSaved }) {
   const router = useRouter();
