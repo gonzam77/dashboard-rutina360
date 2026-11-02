@@ -4,7 +4,9 @@ import Link from "next/link";
 import RoutineDeleteButton from "@/components/roles/RoutineDeleteButton";
 import RoutineEditButton from "@/components/roles/RoutineEditButton";
 import Icon from "@/components/ui/Icon";
+import KindBadge from "@/components/ui/KindBadge";
 import { EmptyState } from "@/components/ui/Feedback";
+import { isFunctional, roundsLabel, routineTimeLabel } from "@/lib/functional";
 
 export default function CoachRoutinesList({
   roleId,
@@ -37,9 +39,13 @@ export default function CoachRoutinesList({
               seguidos y costaba distinguirlos; como chips se leen de un vistazo.
             */}
             <div className="mt-2 flex flex-wrap gap-1.5">
+              <KindBadge routine={routine} />
               <span className="r360-badge r360-badge-neutro">ID {routine.id}</span>
               <span className="r360-badge r360-badge-neutro">Orden {routine.order || "-"}</span>
-              <span className="r360-badge r360-badge-neutro">{routine.time || "-"} min</span>
+              <span className="r360-badge r360-badge-neutro">{routineTimeLabel(routine)}</span>
+              {isFunctional(routine) ? (
+                <span className="r360-badge r360-badge-neutro">{roundsLabel(routine)}</span>
+              ) : null}
               <span
                 className={`r360-badge ${
                   athleteNames.length > 0 ? "r360-badge-exito" : "r360-badge-neutro"

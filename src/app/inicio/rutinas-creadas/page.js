@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import CoachCreateRoutineButton from "@/components/roles/CoachCreateRoutineButton";
 import RoutineDeleteButton from "@/components/roles/RoutineDeleteButton";
 import Icon from "@/components/ui/Icon";
+import KindBadge from "@/components/ui/KindBadge";
 import PageHeader from "@/components/ui/PageHeader";
 import { Card, SectionCard } from "@/components/ui/Card";
 import { Alert, EmptyState, StatCard } from "@/components/ui/Feedback";
@@ -16,6 +17,14 @@ import {
   isActiveRecord,
 } from "@/lib/routines";
 import { canManageRoutine, getViewer, getViewerGymOwnerId, isSuperAdmin } from "@/lib/viewer";
+import {
+  KIND_FUNCTIONAL,
+  KIND_STRENGTH,
+  isFunctional,
+  itemsLabel,
+  roundsLabel,
+  routineTimeLabel,
+} from "@/lib/functional";
 
 export const metadata = {
   title: "Rutinas creadas",
@@ -147,6 +156,23 @@ function classifyRow(row, viewer, viewerGymOwnerId) {
   return "other_coaches";
 }
 
+// Filtro por tipo en la URL (?tipo=fuerza|funcional) para que se pueda
+// compartir el enlace y que el boton Atras del navegador lo respete.
+const KIND_FILTERS = [
+  { key: "todas", label: "Todas" },
+  { key: "fuerza", label: "Fuerza", kind: KIND_STRENGTH },
+  { key: "funcional", label: "Funcional", kind: KIND_FUNCTIONAL },
+];
+
+function resolveKindFilter(value) {
+  return KIND_FILTERS.find((filter) => filter.key === value) || KIND_FILTERS[0];
+}
+
+function matchesKind(routine, filter) {
+  if (!filter.kind) return true;
+  return filter.kind === KIND_FUNCTIONAL ? isFunctional(routine) : !isFunctional(routine);
+}
+
 function getDisplayGroups(roleKey) {
   if (roleKey === "coach") {
     return [
@@ -166,14 +192,17 @@ function getDisplayGroups(roleKey) {
   return [{ key: "all", label: "Todas las rutinas visibles" }];
 }
 
-export default async function RutinasCreadasPage() {
+export default async function RutinasCreadasPage({ searchParams }) {
   const viewer = await getViewer();
+  const { tipo } = await searchParams;
+  const kindFilter = resolveKindFilter(tipo);
 
   if (!viewer) {
     redirect("/login");
   }
 
   let rows = [];
+  let allRowsCount = 0;
   let errorMessage = "";
   const groupedRows = { own: [], other_coaches: [], gym: [], coaches: [], all: [] };
 
@@ -185,9 +214,11 @@ export default async function RutinasCreadasPage() {
       getViewerGymOwnerId(),
     ]);
 
-    rows = buildRoutineRows(routines, assignments, users).filter((row) =>
+    const visibleRows = buildRoutineRows(routines, assignments, users).filter((row) =>
       isRowVisibleFor(row, viewer, viewerGymOwnerId)
     );
+    allRowsCount = visibleRows.length;
+    rows = visibleRows.filter((row) => matchesKind(row.routine, kindFilter));
 
     for (const row of rows) {
       // Mismo criterio que /api/routines/[routineId]: no se ofrece lo que la API rechaza.
@@ -215,12 +246,33 @@ export default async function RutinasCreadasPage() {
         breadcrumbs={[{ href: "/inicio", label: "Panel" }, { label: "Rutinas creadas" }]}
         actions={
           viewer.roleKey === "coach" || viewer.roleKey === "admin" ? (
-            <CoachCreateRoutineButton coachId={viewer.id} />
+            <div className="flex flex-wrap gap-2">
+              <CoachCreateRoutineButton coachId={viewer.id} />
+              <CoachCreateRoutineButton coachId={viewer.id} kind={KIND_FUNCTIONAL} />
+            </div>
           ) : null
         }
       />
 
       {errorMessage ? <Alert title="No se pudieron cargar las rutinas">{errorMessage}</Alert> : null}
+
+      {!errorMessage && allRowsCount > 0 ? (
+        <nav aria-label="Tipo de rutina" className="flex flex-wrap gap-2">
+          {KIND_FILTERS.map((filter) => {
+            const active = filter.key === kindFilter.key;
+            return (
+              <Link
+                key={filter.key}
+                href={filter.kind ? `/inicio/rutinas-creadas?tipo=${filter.key}` : "/inicio/rutinas-creadas"}
+                aria-current={active ? "page" : undefined}
+                className={`r360-btn r360-btn-sm ${active ? "r360-btn-accent" : "r360-btn-ghost"}`}
+              >
+                {filter.label}
+              </Link>
+            );
+          })}
+        </nav>
+      ) : null}
 
       {!errorMessage ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -240,8 +292,16 @@ export default async function RutinasCreadasPage() {
         <Card>
           <EmptyState
             icon="rutinas"
-            title="No hay rutinas visibles para tu perfil"
-            description="Crea una rutina o pedile a tu gimnasio que comparta las suyas."
+            title={
+              allRowsCount > 0
+                ? `No hay rutinas de ${kindFilter.label.toLowerCase()} visibles`
+                : "No hay rutinas visibles para tu perfil"
+            }
+            description={
+              allRowsCount > 0
+                ? "Proba con otro filtro o crea una nueva."
+                : "Crea una rutina o pedile a tu gimnasio que comparta las suyas."
+            }
           />
         </Card>
       ) : null}
@@ -286,15 +346,21 @@ export default async function RutinasCreadasPage() {
                             {routine?.name || `Rutina #${routine.id}`}
                           </p>
                           <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <KindBadge routine={routine} />
                             <span className="r360-badge r360-badge-neutro">ID {routine.id}</span>
                             <span className="r360-badge r360-badge-neutro">
                               Orden {routine?.order || "-"}
                             </span>
                             <span className="r360-badge r360-badge-neutro">
-                              {routine?.time || "-"} min
+                              {routineTimeLabel(routine)}
                             </span>
+                            {isFunctional(routine) ? (
+                              <span className="r360-badge r360-badge-neutro">
+                                {roundsLabel(routine)}
+                              </span>
+                            ) : null}
                             <span className="r360-badge r360-badge-neutro">
-                              {row.exerciseCount} ejercicio{row.exerciseCount === 1 ? "" : "s"}
+                              {itemsLabel(routine, row.exerciseCount)}
                             </span>
                           </div>
                           <p className="mt-2 flex items-center gap-1.5 text-xs text-texto-2">

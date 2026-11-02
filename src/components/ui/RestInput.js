@@ -2,14 +2,25 @@
 
 import { MAX_REST_MINUTES, REST_SECONDS_STEP, splitRest } from "@/lib/rest";
 
-const MINUTE_OPTIONS = Array.from({ length: MAX_REST_MINUTES + 1 }, (_, i) => i);
 const SECOND_OPTIONS = Array.from({ length: 60 / REST_SECONDS_STEP }, (_, i) => i * REST_SECONDS_STEP);
 
 /**
  * Descanso entre series: minutos y segundos por separado.
  * value / onChange trabajan en segundos totales ("" = sin elegir).
+ *
+ * Los funcionales lo reusan para el trabajo y los descansos: `label` cambia el
+ * texto ("Trabajo", "Descanso entre vueltas") y `maxMinutes` el tope.
  */
-export default function RestInput({ value, onChange, className = "", selectClassName = "r360-input" }) {
+export default function RestInput({
+  value,
+  onChange,
+  className = "",
+  selectClassName = "r360-input",
+  label = "Descanso",
+  legend = "Descanso entre series",
+  maxMinutes = MAX_REST_MINUTES,
+}) {
+  const minuteOptions = Array.from({ length: maxMinutes + 1 }, (_, i) => i);
   const chosen = value !== "" && value !== null && value !== undefined;
   const { minutes, seconds } = splitRest(chosen ? value : 0);
 
@@ -21,16 +32,16 @@ export default function RestInput({ value, onChange, className = "", selectClass
 
   return (
     <fieldset className={`grid grid-cols-2 gap-2 ${className}`}>
-      <legend className="sr-only">Descanso entre series</legend>
+      <legend className="sr-only">{legend}</legend>
       <label className="flex flex-col gap-1">
-        <span className="text-xs font-semibold text-texto-3">Descanso (min)</span>
+        <span className="text-xs font-semibold text-texto-3">{label} (min)</span>
         <select
           value={chosen ? String(minutes) : ""}
           onChange={(event) => update("minutes", event.target.value)}
           className={selectClassName}
         >
           <option value="" disabled className="bg-superficie-alta text-texto">Min</option>
-          {MINUTE_OPTIONS.map((option) => (
+          {minuteOptions.map((option) => (
             <option key={option} value={option} className="bg-superficie-alta text-texto">
               {option} min
             </option>
@@ -38,7 +49,7 @@ export default function RestInput({ value, onChange, className = "", selectClass
         </select>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="text-xs font-semibold text-texto-3">Descanso (seg)</span>
+        <span className="text-xs font-semibold text-texto-3">{label} (seg)</span>
         <select
           value={chosen ? String(seconds) : ""}
           onChange={(event) => update("seconds", event.target.value)}

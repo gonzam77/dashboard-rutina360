@@ -18,6 +18,9 @@ export default function CatalogCreateForm({
   hiddenFields = {},
   className = "",
   inputClassName = "",
+  // Campos extra entre el nombre y el boton (el tipo de un grupo, el trabajo
+  // sugerido de un ejercicio funcional). Sin children el form queda igual.
+  children = null,
 }) {
   const [state, formAction, isPending] = useActionState(action, INITIAL_STATE);
 
@@ -35,6 +38,7 @@ export default function CatalogCreateForm({
           placeholder={placeholder}
           className={`r360-input ${inputClassName}`}
         />
+        {children}
         <button
           type="submit"
           disabled={isPending}

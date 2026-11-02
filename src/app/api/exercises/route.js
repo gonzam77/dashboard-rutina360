@@ -4,7 +4,13 @@ import { getServerAccessToken } from "@/lib/auth-service";
 import { extractArrayPayload } from "@/lib/api-response";
 import { jsonError } from "@/lib/api-guard";
 
-export async function GET() {
+// ?kind=strength|functional se pasa tal cual al backend.
+function kindQuery(request) {
+  const kind = new URL(request.url).searchParams.get("kind");
+  return kind === "strength" || kind === "functional" ? `?kind=${kind}` : "";
+}
+
+export async function GET(request) {
   try {
     const token = await getServerAccessToken();
 
@@ -12,7 +18,7 @@ export async function GET() {
       return jsonError("No autenticado.", 401);
     }
 
-    const { ok, status, json } = await apiRequest(PATHS.exercises, { token });
+    const { ok, status, json } = await apiRequest(`${PATHS.exercises}${kindQuery(request)}`, { token });
 
     if (!ok) {
       return NextResponse.json(
